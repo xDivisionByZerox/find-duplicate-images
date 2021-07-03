@@ -1,0 +1,27 @@
+{
+  "name": "find-duplicate-files",
+  "version": "1.0.0",
+  "description": "A little script to find duplicate files by content in a given directory.",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/find-duplicate-files.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xDivisionByZerox/find-duplicate-files.git"
+  },
+  "keywords": [
+    "find",
+    "duplicate",
+    "files"
+  ],
+  "author": "Leyla Jähnig",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/xDivisionByZerox/find-duplicate-files/issues"
+  },
+  "homepage": "https://github.com/xDivisionByZerox/find-duplicate-files#readme",
+  "devDependencies": {
+    "ts-node": "^10.0.0"
+  }
+}
