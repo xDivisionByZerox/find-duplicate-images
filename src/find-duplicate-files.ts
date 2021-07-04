@@ -1,5 +1,6 @@
 import fs from 'fs';
 import fsPromise from 'fs/promises';
+import { execSync } from 'child_process';
 
 // dynamic
 const pathToCheck = '';
@@ -71,12 +72,28 @@ async function ouputResults(files: IFileInfo[][]) {
   const location = __dirname.replace(/\\/g, "/");
   await fsPromise.copyFile(`${location}/find-duplicate-files.html`, htmlOutputFile);
 
-  console.log('Please open', htmlOutputFile, 'in your browser to view the results.');
+  try {
+    console.log('Trying to automatically open results');
+    execSync(`${getStartBrowserCommand()} ${htmlOutputFile}`);
+  } catch {
+    console.log('Coult not open results automatically. Please open', htmlOutputFile, 'in your browser to view the results.');
+  }
+}
+
+function getStartBrowserCommand() {
+  const { platform } = process;
+  if (platform === 'darwin') {
+    return 'open';
+  } else if (platform === 'win32') {
+    return 'start';
+  } else {
+    return 'xdg-open';
+  }
 }
 
 (async () => {
   try {
-    if(pathToCheck.length <= 0) {
+    if (pathToCheck.length <= 0) {
       throw new Error('Please set "pathToCheck" variable to the location you want to check for duplicate files.');
     }
 
