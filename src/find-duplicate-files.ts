@@ -41,7 +41,7 @@ async function readFileListAsBuffers(fileList: string[]): Promise<IMapedFile[]> 
 async function findDuplicatedFromMapedFileList(list: IMapedFile[]): Promise<[number, number][]> {
   const groupsOfSameFiles: [number, number][] = [];
 
-  const timerLabel = `Compared ${list.length} files in:`;
+  const timerLabel = `Compared ${list.length} files in`;
   console.time(timerLabel);
   list.forEach((file, i) => {
     list.forEach((file2, k) => {
