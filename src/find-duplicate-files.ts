@@ -1,24 +1,33 @@
 import fs from 'fs';
+import path from 'path';
 import fsPromise from 'fs/promises';
 import { execSync } from 'child_process';
 
 // dynamic
-const pathToCheck = '';
+const config = {
+  pathToCheck: 'C:',
+  htmlFileName: 'index.html',
+  jsFileName: 'data.js',
+  outputDir: getPath(__dirname, 'duplicate-files'),
+}
 
 // hard set, dont touch
-const outputDir = './duplicate-files/';
-const htmlOutputFile = outputDir + 'index.html';
-const jsOutputFile = outputDir + 'data.js';
+const htmlOutputFile = getPath(config.outputDir, config.htmlFileName);
+const jsOutputFile = getPath(config.outputDir, config.jsFileName);
 
 interface IMapedFile {
   name: string;
   buffer: Buffer;
 }
 
+function getPath(...pathes: string[]): string {
+  return path.normalize(path.join(...pathes))
+}
+
 async function readFileListAsBuffers(fileList: string[]): Promise<IMapedFile[]> {
   const timerLabel = `Read ${fileList.length} files in`;
   console.time(timerLabel);
-  const promises = fileList.map((name) => fsPromise.readFile(pathToCheck + name));
+  const promises = fileList.map((name) => fsPromise.readFile(getPath(config.pathToCheck, name)));
   const buffers = await Promise.all(promises);
   const map = fileList.map((name, index) => ({
     name,
@@ -64,13 +73,13 @@ interface IFileInfo {
 }
 
 async function ouputResults(files: IFileInfo[][]) {
-  await fsPromise.mkdir(outputDir, {
+  await fsPromise.mkdir(config.outputDir, {
     recursive: true,
   });
   await fsPromise.writeFile(jsOutputFile, `const data = ${JSON.stringify(files)};`);
 
   const location = __dirname.replace(/\\/g, "/");
-  await fsPromise.copyFile(`${location}/find-duplicate-files.html`, htmlOutputFile);
+  await fsPromise.copyFile(getPath(location, 'find-duplicate-files.html'), htmlOutputFile);
 
   try {
     console.log('Trying to automatically open results');
@@ -93,13 +102,13 @@ function getStartBrowserCommand() {
 
 (async () => {
   try {
-    if (pathToCheck.length <= 0) {
+    if (config.pathToCheck.length <= 0) {
       throw new Error('Please set "pathToCheck" variable to the location you want to check for duplicate files.');
     }
 
-    const directoryOutput = await fsPromise.readdir(pathToCheck);
-    const fileList = directoryOutput.filter((name) => fs.statSync(pathToCheck + name).isFile());
-    const subDirectorys = directoryOutput.filter((name) => fs.statSync(pathToCheck + name).isDirectory());
+    const directoryOutput = await fsPromise.readdir(config.pathToCheck);
+    const fileList = directoryOutput.filter((name) => fs.statSync(getPath(config.pathToCheck, name)).isFile());
+    const subDirectorys = directoryOutput.filter((name) => fs.statSync(getPath(config.pathToCheck,name)).isDirectory());
     console.log('Found', subDirectorys.length, 'subdirectorys and', fileList.length, 'files to check');
 
     const map = await readFileListAsBuffers(fileList);
@@ -111,7 +120,7 @@ function getStartBrowserCommand() {
 
         return {
           name: fileName,
-          path: pathToCheck + fileName,
+          path: getPath(config.pathToCheck, fileName),
         };
       });
     })
