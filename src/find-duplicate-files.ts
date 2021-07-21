@@ -3,68 +3,9 @@ import path from 'path';
 import fsPromise from 'fs/promises';
 import { execSync } from 'child_process';
 
-// dynamic
-const config = {
-  pathToCheck: 'C:',
-  htmlFileName: 'index.html',
-  jsFileName: 'data.js',
-  outputDir: getPath(__dirname, 'duplicate-files'),
-}
-
-// hard set, dont touch
-const htmlOutputFile = getPath(config.outputDir, config.htmlFileName);
-const jsOutputFile = getPath(config.outputDir, config.jsFileName);
-
 interface IMapedFile {
   name: string;
   buffer: Buffer;
-}
-
-function getPath(...pathes: string[]): string {
-  return path.normalize(path.join(...pathes))
-}
-
-async function readFileListAsBuffers(fileList: string[]): Promise<IMapedFile[]> {
-  const timerLabel = `Read ${fileList.length} files in`;
-  console.time(timerLabel);
-  const promises = fileList.map((name) => fsPromise.readFile(getPath(config.pathToCheck, name)));
-  const buffers = await Promise.all(promises);
-  const map = fileList.map((name, index) => ({
-    name,
-    buffer: buffers[index]!,
-  }));
-  console.timeEnd(timerLabel);
-
-  return map;
-}
-
-async function findDuplicatedFromMapedFileList(list: IMapedFile[]): Promise<[number, number][]> {
-  const groupsOfSameFiles: [number, number][] = [];
-
-  const timerLabel = `Compared ${list.length} files in`;
-  console.time(timerLabel);
-  list.forEach((file, i) => {
-    list.forEach((file2, k) => {
-      if (i === k) {
-        return;
-      }
-
-      if (!file.buffer.equals(file2.buffer)) {
-        return;
-      }
-
-      const isIn = groupsOfSameFiles.find((elem) => elem.includes(i) && elem.includes(k));
-      if (isIn) {
-        return;
-      }
-
-      groupsOfSameFiles.push([i, k]);
-    });
-  });
-  console.timeEnd(timerLabel);
-  console.log('Found', groupsOfSameFiles.length, 'possible duplicates');
-
-  return groupsOfSameFiles;
 }
 
 interface IFileInfo {
@@ -72,47 +13,35 @@ interface IFileInfo {
   path: string;
 }
 
-async function ouputResults(files: IFileInfo[][]) {
-  await fsPromise.mkdir(config.outputDir, {
-    recursive: true,
-  });
-  await fsPromise.writeFile(jsOutputFile, `const data = ${JSON.stringify(files)};`);
-
-  const location = __dirname.replace(/\\/g, "/");
-  await fsPromise.copyFile(getPath(location, 'find-duplicate-files.html'), htmlOutputFile);
-
-  try {
-    console.log('Trying to automatically open results');
-    execSync(`${getStartBrowserCommand()} ${htmlOutputFile}`);
-  } catch {
-    console.log('Coult not open results automatically. Please open', htmlOutputFile, 'in your browser to view the results.');
-  }
+function getPath(...pathes: string[]): string {
+  return path.normalize(path.join(...pathes))
 }
 
-function getStartBrowserCommand() {
-  const { platform } = process;
-  if (platform === 'darwin') {
-    return 'open';
-  } else if (platform === 'win32') {
-    return 'start';
-  } else {
-    return 'xdg-open';
-  }
+interface IDuplicateFileFinderConstructor {
+  pathToCheck: string;
 }
 
-(async () => {
-  try {
-    if (config.pathToCheck.length <= 0) {
-      throw new Error('Please set "pathToCheck" variable to the location you want to check for duplicate files.');
+class DuplicateFileFinder {
+
+  private readonly $pathToCheck: string
+
+  constructor(params: IDuplicateFileFinderConstructor) {
+    const { pathToCheck } = params;
+    if (pathToCheck.length <= 0) {
+      throw new Error('"pathToCheck" cannot be empty.');
     }
 
-    const directoryOutput = await fsPromise.readdir(config.pathToCheck);
-    const fileList = directoryOutput.filter((name) => fs.statSync(getPath(config.pathToCheck, name)).isFile());
-    const subDirectorys = directoryOutput.filter((name) => fs.statSync(getPath(config.pathToCheck,name)).isDirectory());
+    this.$pathToCheck = pathToCheck;
+  }
+
+  public async find(): Promise<IFileInfo[][]> {
+    const directoryOutput = await fsPromise.readdir(this.$pathToCheck);
+    const fileList = directoryOutput.filter((name) => fs.statSync(getPath(this.$pathToCheck, name)).isFile());
+    const subDirectorys = directoryOutput.filter((name) => fs.statSync(getPath(this.$pathToCheck, name)).isDirectory());
     console.log('Found', subDirectorys.length, 'subdirectorys and', fileList.length, 'files to check');
 
-    const map = await readFileListAsBuffers(fileList);
-    const groupsOfSameFiles = await findDuplicatedFromMapedFileList(map);
+    const map = await this.readFileListAsBuffers(fileList);
+    const groupsOfSameFiles = await this.findDuplicatedFromMapedFileList(map);
 
     const formatedResults: IFileInfo[][] = groupsOfSameFiles.map((group): IFileInfo[] => {
       return group.map((elem) => {
@@ -123,8 +52,119 @@ function getStartBrowserCommand() {
           path: getPath(config.pathToCheck, fileName),
         };
       });
-    })
-    await ouputResults(formatedResults);
+    });
+
+    return formatedResults;
+  }
+
+  private async readFileListAsBuffers(fileList: string[]): Promise<IMapedFile[]> {
+    const timerLabel = `Read ${fileList.length} files in`;
+    console.time(timerLabel);
+    const promises = fileList.map((name) => fsPromise.readFile(getPath(config.pathToCheck, name)));
+    const buffers = await Promise.all(promises);
+    const map = fileList.map((name, index) => ({
+      name,
+      buffer: buffers[index]!,
+    }));
+    console.timeEnd(timerLabel);
+
+    return map;
+  }
+
+  private async findDuplicatedFromMapedFileList(list: IMapedFile[]): Promise<[number, number][]> {
+    const groupsOfSameFiles: [number, number][] = [];
+
+    const timerLabel = `Compared ${list.length} files in`;
+    console.time(timerLabel);
+    list.forEach((file, i) => {
+      list.forEach((file2, k) => {
+        if (i === k) {
+          return;
+        }
+
+        if (!file.buffer.equals(file2.buffer)) {
+          return;
+        }
+
+        const isIn = groupsOfSameFiles.find((elem) => elem.includes(i) && elem.includes(k));
+        if (isIn) {
+          return;
+        }
+
+        groupsOfSameFiles.push([i, k]);
+      });
+    });
+    console.timeEnd(timerLabel);
+    console.log('Found', groupsOfSameFiles.length, 'possible duplicates');
+
+    return groupsOfSameFiles;
+  }
+};
+
+interface IResultHandlerConstructor {
+  outputDir: string;
+  jsFileName: string;
+  htmlFileName: string;
+}
+
+class ResultHandler {
+
+  private readonly $htmlOutputFile: string;
+  private readonly $jsOutputFile: string;
+
+  constructor(params: IResultHandlerConstructor) {
+    this.$htmlOutputFile = getPath(params.outputDir, params.htmlFileName);
+    this.$jsOutputFile = getPath(params.outputDir, params.jsFileName);
+  }
+
+  async ouputResults(files: IFileInfo[][]) {
+    await fsPromise.mkdir(config.outputDir, {
+      recursive: true,
+    });
+    await fsPromise.writeFile(this.$jsOutputFile, `const data = ${JSON.stringify(files)};`);
+
+    const location = __dirname.replace(/\\/g, "/");
+    await fsPromise.copyFile(getPath(location, 'find-duplicate-files.html'), this.$htmlOutputFile);
+
+    try {
+      console.log('Trying to automatically open results');
+      const cmd = this.getStartBrowserCommand();
+      execSync(`${cmd} ${this.$htmlOutputFile}`);
+    } catch {
+      console.log('Coult not open results automatically. Please open', this.$htmlOutputFile, 'in your browser to view the results.');
+    }
+  }
+
+  private getStartBrowserCommand() {
+    const { platform } = process;
+    if (platform === 'darwin') {
+      return 'open';
+    } else if (platform === 'win32') {
+      return 'start';
+    } else {
+      return 'xdg-open';
+    }
+  }
+};
+
+type Config = IResultHandlerConstructor & IDuplicateFileFinderConstructor;
+
+// dynamic
+const config: Config = {
+  pathToCheck: 'D:\\OneDrive\\Bilder',
+  htmlFileName: 'index.html',
+  jsFileName: 'data.js',
+  outputDir: getPath(__dirname, 'duplicate-files'),
+};
+
+(async () => {
+  try {
+    const results = await new DuplicateFileFinder({ pathToCheck: config.pathToCheck }).find();
+    await new ResultHandler({
+      htmlFileName: config.htmlFileName,
+      jsFileName: config.jsFileName,
+      outputDir: config.outputDir,
+    }).ouputResults(results);
   } catch (error) {
     console.log('could not resolve duplicate files');
     console.log(error);

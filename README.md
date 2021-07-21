@@ -9,7 +9,7 @@ Clone the repo.
   git clone https://github.com/xDivisionByZerox/find-duplicate-files.git
 ```
 
-Change the `config.pathToCheck` variable in [src/find-duplicate-files.ts](src/find-duplicate-files.ts) (line 8) to the absolute directory path you want to check for duplicate files.
+Change the `pathToCheck` property in the `config` variable in [src/find-duplicate-files.ts](src/find-duplicate-files.ts) (line 8) to the absolute directory path you want to check for duplicate files.
 
 > ⚠ This is planed to be exported to a cli param or config file in the future. Heads up.
 
