@@ -20,7 +20,7 @@ export class ResultHandler {
   private readonly $jsOutputFileName: string;
   private readonly getJsOutputFilePath = () => Util.getPath(this.$outputDir, this.$jsOutputFileName);
 
-  private readonly $htmlTemplateFileName = 'find-duplicate-files.template.html';
+  private readonly $htmlTemplateFileName = 'index.template.html';
   private readonly getHtmlTemplateFilePath = () => Util.getPath(path.dirname(process.argv[1]!), this.$htmlTemplateFileName);
 
   constructor(params: IResultHandlerConstructor) {
