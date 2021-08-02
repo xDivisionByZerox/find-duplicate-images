@@ -2,7 +2,7 @@ import { IDuplicateFileFinderConstructor } from './models/duplicate-file-finder'
 import { IResultHandlerConstructor } from './models/result-handler';
 import { Util } from './models/util';
 
-type Config = IResultHandlerConstructor & IDuplicateFileFinderConstructor;
+export type Config = IResultHandlerConstructor & IDuplicateFileFinderConstructor;
 
 // dynamic
 export const defaultConfig: Config = {
