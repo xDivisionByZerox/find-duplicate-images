@@ -4,9 +4,10 @@
   "description": "A little script to find duplicate files by content in a given directory.",
   "main": "index.js",
   "scripts": {
-    "build": "node scripts/build.js",
-    "start-minified": "npm run build && node build/index.js",
-    "start": "ts-node src/index.ts"
+    "build": "tsc && node scripts/build.js",
+    "prestart": "npm run build",
+    "start": "node build/index.js",
+    "start:dev": "ts-node src/index.ts"
   },
   "repository": {
     "type": "git",
