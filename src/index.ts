@@ -1,6 +1,6 @@
+import { ArgumentParser } from './models/argument-parser';
 import { DuplicateFileFinder } from './models/duplicate-file-finder';
 import { ResultHandler } from './models/result-handler';
-import { defaultConfig } from './default-config';
 
 export interface IFileInfo {
   name: string;
@@ -9,11 +9,12 @@ export interface IFileInfo {
 
 (async () => {
   try {
-    const results = await new DuplicateFileFinder({ pathToCheck: defaultConfig.pathToCheck }).find();
+    const config = ArgumentParser.parseArguments();
+    const results = await new DuplicateFileFinder({ pathToCheck: config.pathToCheck }).find();
     await new ResultHandler({
-      htmlFileName: defaultConfig.htmlFileName,
-      jsFileName: defaultConfig.jsFileName,
-      outputDir: defaultConfig.outputDir,
+      htmlFileName: config.htmlFileName,
+      jsFileName: config.jsFileName,
+      outputDir: config.outputDir,
     }).ouputResults(results);
   } catch (error) {
     console.log('could not resolve duplicate files');

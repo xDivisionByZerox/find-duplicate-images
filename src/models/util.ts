@@ -12,4 +12,11 @@ export abstract class Util {
     }
   }
 
+  static isObject<T extends Record<string, any>>(value: unknown): value is Partial<T> {
+    return (
+      typeof value === 'object'
+      && value !== undefined
+    );
+  }
+
 }

@@ -1,87 +1,54 @@
-import { Config } from '../default-config';
+import commandLineArgs, { OptionDefinition } from 'command-line-args';
+import { Config } from './config';
+import { IResultHandlerConstructor } from './result-handler';
 import { Util } from './util';
 
-interface IKeyValueResult {
-  key: keyof Config;
-  value: string;
+interface ConfigOptionDefinition extends OptionDefinition {
+  name: keyof Config;
 }
 
-type HandlerResult = IKeyValueResult | undefined;
+export class ArgumentParser {
 
-class ArgumentParser {
-
-  private readonly $config: Partial<Config> = {
-    htmlFileName: undefined,
-    jsFileName: undefined,
-    outputDir: undefined,
-    pathToCheck: undefined,
+  private static defaultConfig: IResultHandlerConstructor = {
+    htmlFileName: 'index.html',
+    jsFileName: 'data.js',
+    outputDir: Util.getPath(__dirname, 'duplicate-files'),
   };
 
-  parseFromProcess() {
-    const args = process.argv.splice(2);
-    let nextArg = args.shift();
-    while (nextArg) {
-      const currentArg = nextArg;
-      nextArg = args.shift();
+  private static $ClaOptionDefinition: ConfigOptionDefinition[] = [
+    {
+      name: 'htmlFileName',
+      alias: 'h',
+      type: String,
+      defaultValue: ArgumentParser.defaultConfig.htmlFileName,
+    },
+    {
+      name: 'jsFileName',
+      alias: 'j',
+      type: String,
+      defaultValue: ArgumentParser.defaultConfig.jsFileName,
+    },
+    {
+      name: 'pathToCheck',
+      alias: 'p',
+      defaultOption: true,
+      type: String,
+    },
+    {
+      name: 'outputDir',
+      alias: 'o',
+      type: String,
+      defaultValue: ArgumentParser.defaultConfig.outputDir,
+    },
+  ];
 
-      const resultDoubleDash = this.checkForDoubleDashArg(currentArg, nextArg);
-      if (resultDoubleDash !== undefined) {
-        this.applyKeyValueToMap(resultDoubleDash);
-        continue;
-      }
-
-      const resultKeyValueString = this.checkForKeyValueStringPair(currentArg);
-      if (resultKeyValueString !== undefined) {
-        this.applyKeyValueToMap(resultKeyValueString);
-        continue;
-      }
+  static parseArguments() {
+    const options = commandLineArgs(this.$ClaOptionDefinition);
+    if (!Config.hasConfig(options)) {
+      throw new Error('invalid or missing params');
     }
 
-    return this.$config;
+    return new Config(options);
   }
 
-  private checkForKeyValueStringPair(arg: string): HandlerResult {
-    const [key, value] = arg.split('=');
-    if (
-      key !== undefined
-      && value !== undefined
-      && Util.isKeyof(this.$config)(key)
-    ) {
-      const result = { key, value };
-      console.log("currentArg is with keyValuePair", result);
-
-      return result;
-    }
-
-    return undefined;
-  }
-
-  private checkForDoubleDashArg(arg: string, nextArg?: string): HandlerResult {
-    if (arg.startsWith('--')) {
-      const argShaved = arg.substr(2);
-
-      const keyValueResult = this.checkForKeyValueStringPair(argShaved);
-      if (keyValueResult) {
-        return keyValueResult;
-      }
-
-      if (Util.isKeyof(this.$config)(argShaved)) {
-        if (nextArg !== undefined) {
-          return {
-            key: argShaved,
-            value: nextArg,
-          }
-        }
-      }
-    }
-
-    return undefined;
-  }
-
-  private applyKeyValueToMap(params: IKeyValueResult) {
-    this.$config[params.key] = params.value;
-  }
 }
-
-export const configFromCli = new ArgumentParser().parseFromProcess();
-console.log(configFromCli);
