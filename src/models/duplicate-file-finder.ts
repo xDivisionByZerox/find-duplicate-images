@@ -1,7 +1,6 @@
 import fs from 'fs';
 import fsPromise from 'fs/promises';
 import { IFileInfo } from '..';
-import { defaultConfig } from '../default-config';
 import { Util } from './util';
 
 interface IMapedFile {
@@ -41,7 +40,7 @@ export class DuplicateFileFinder {
 
         return {
           name: fileName,
-          path: Util.getPath(defaultConfig.pathToCheck, fileName),
+          path: Util.getPath(this.$pathToCheck, fileName),
         };
       });
     });
@@ -52,7 +51,7 @@ export class DuplicateFileFinder {
   private async readFileListAsBuffers(fileList: string[]): Promise<IMapedFile[]> {
     const timerLabel = `Read ${fileList.length} files in`;
     console.time(timerLabel);
-    const promises = fileList.map((name) => fsPromise.readFile(Util.getPath(defaultConfig.pathToCheck, name)));
+    const promises = fileList.map((name) => fsPromise.readFile(Util.getPath(this.$pathToCheck, name)));
     const buffers = await Promise.all(promises);
     const map = fileList.map((name, index) => ({
       name,
