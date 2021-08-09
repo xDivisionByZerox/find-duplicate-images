@@ -14,13 +14,11 @@ Install dependencies.
   npm install
 ```
 
-Change the `pathToCheck` property in the `config` variable in [src/find-duplicate-files.ts](src/find-duplicate-files.ts) (line 8) to the absolute directory path you want to check for duplicate files.
-
-> ⚠ This is planed to be exported to a cli param or config file in the future. Heads up.
-
-Run the script via the predefined npm start script from the project directory.
+Run the script via the predefined npm start script from the project directory by putting the absolute directory path you want to check for duplicate files at the end of the command. 
 ```
-  npm run start
+  npm run start *absolute_directory_path_you_want_to_check*
 ```
 
-The script will output some additional information the comand line. So keep an eye on it.
+The script will output some additional information the comand line. So keep an eye on it if you are interested in some extra data.
+
+After comparing all files the programm will try to open the results in your maschines default browser. If this fails it will put a link in the terminal you can copy and past to any html file viewer to view the results. 
