@@ -4,7 +4,7 @@ import { IFileInfo } from '..';
 import { Util } from './util';
 
 interface IMapedFile {
-  name: string;
+  path: string;
   buffer: Buffer;
 }
 
@@ -27,20 +27,21 @@ export class DuplicateFileFinder {
 
   public async find(): Promise<IFileInfo[][]> {
     const directoryOutput = await fsPromise.readdir(this.$pathToCheck);
-    const fileList = directoryOutput.filter((name) => fs.statSync(Util.getPath(this.$pathToCheck, name)).isFile());
-    const subDirectorys = directoryOutput.filter((name) => fs.statSync(Util.getPath(this.$pathToCheck, name)).isDirectory());
-    console.log('Found', subDirectorys.length, 'subdirectorys and', fileList.length, 'files to check');
+    const pathList = directoryOutput.map((fileName) => Util.getPath(this.$pathToCheck, fileName));
+    const filePathList = pathList.filter((path) => fs.statSync(path).isFile());
+    const subDirectorys = pathList.filter((path) => fs.statSync(path).isDirectory());
+    console.log('Found', subDirectorys.length, 'subdirectorys and', filePathList.length, 'files to check');
 
-    const map = await this.readFileListAsBuffers(fileList);
+    const map = await this.readFileListAsBuffers(filePathList);
     const groupsOfSameFiles = await this.findDuplicatedFromMapedFileList(map);
 
     const formatedResults: IFileInfo[][] = groupsOfSameFiles.map((group): IFileInfo[] => {
       return group.map((elem) => {
-        const fileName = fileList[elem]!;
+        const filePath = filePathList[elem]!;
 
         return {
-          name: fileName,
-          path: Util.getPath(this.$pathToCheck, fileName),
+          name: filePath.split('/').pop()!,
+          path: filePath,
         };
       });
     });
@@ -48,13 +49,13 @@ export class DuplicateFileFinder {
     return formatedResults;
   }
 
-  private async readFileListAsBuffers(fileList: string[]): Promise<IMapedFile[]> {
-    const timerLabel = `Read ${fileList.length} files in`;
+  private async readFileListAsBuffers(filePathList: string[]): Promise<IMapedFile[]> {
+    const timerLabel = `Read ${filePathList.length} files in`;
     console.time(timerLabel);
-    const promises = fileList.map((name) => fsPromise.readFile(Util.getPath(this.$pathToCheck, name)));
+    const promises = filePathList.map((filePath) => fsPromise.readFile(filePath));
     const buffers = await Promise.all(promises);
-    const map = fileList.map((name, index) => ({
-      name,
+    const map = filePathList.map((filePath, index): IMapedFile => ({
+      path: filePath,
       buffer: buffers[index]!,
     }));
     console.timeEnd(timerLabel);
