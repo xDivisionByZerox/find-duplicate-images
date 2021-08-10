@@ -1,4 +1,4 @@
-# find-duplicate-files
+# find-duplicate-images
 A little script to find duplicate images by content in a given directory.
 
 # How to use
