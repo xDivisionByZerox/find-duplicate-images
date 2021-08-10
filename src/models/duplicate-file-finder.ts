@@ -88,7 +88,7 @@ export class DuplicateFileFinder {
       'raw',
       'tif',
       'tiff',
-    ].includes(extension);
+    ].includes(extension.toLowerCase());
   }
 
   private async readFileListAsBuffers(filePathList: string[]): Promise<IMapedFile[]> {
