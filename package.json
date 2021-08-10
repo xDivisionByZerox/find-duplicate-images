@@ -1,7 +1,7 @@
 {
-  "name": "find-duplicate-files",
+  "name": "find-duplicate-images",
   "version": "1.0.0",
-  "description": "A little script to find duplicate files by content in a given directory.",
+  "description": "A little script to find duplicate images by content in a given directory.",
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/index.ts"
