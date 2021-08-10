@@ -26,11 +26,9 @@ export class DuplicateFileFinder {
   }
 
   public async find(): Promise<IFileInfo[][]> {
-    const directoryOutput = await fsPromise.readdir(this.$pathToCheck);
-    const pathList = directoryOutput.map((fileName) => Util.getPath(this.$pathToCheck, fileName));
-    const filePathList = pathList.filter((path) => fs.statSync(path).isFile());
-    const subDirectorys = pathList.filter((path) => fs.statSync(path).isDirectory());
-    console.log('Found', subDirectorys.length, 'subdirectorys and', filePathList.length, 'files to check');
+    const { filePathList, subDirectorys } = await this.findFiles(this.$pathToCheck);
+    console.log('Found', filePathList.length, 'files in', subDirectorys.length, 'subdirectories.');
+    console.log('Start searching for duplicates.')
 
     const map = await this.readFileListAsBuffers(filePathList);
     const groupsOfSameFiles = await this.findDuplicatedFromMapedFileList(map);
@@ -47,6 +45,50 @@ export class DuplicateFileFinder {
     });
 
     return formatedResults;
+  }
+
+  private async findFiles(givenPath: string) {
+    const directoryOutput = await fsPromise.readdir(givenPath);
+    const pathList = directoryOutput.map((fileName) => Util.getPath(givenPath, fileName));
+
+    const filePathList: string[] = [];
+    const subDirectorys: string[] = [];
+    for (const path of pathList) {
+      const stat = fs.statSync(path);
+      if (stat.isFile() && this.isImageFile(path)) {
+        filePathList.push(path);
+      } else if (stat.isDirectory()) {
+        subDirectorys.push(path);
+      }
+    }
+
+    for (const subDir of subDirectorys) {
+      const result = await this.findFiles(subDir);
+      filePathList.push(...result.filePathList);
+    }
+
+    return {
+      filePathList,
+      subDirectorys,
+    };
+  }
+
+  private isImageFile = (path: string): boolean => {
+    const extension = path.split('.').pop();
+    if (extension === undefined) {
+      return false;
+    }
+
+    return [
+      'bmp',
+      'gif',
+      'jpeg',
+      'jpg',
+      'png',
+      'raw',
+      'tif',
+      'tiff',
+    ].includes(extension.toLowerCase());
   }
 
   private async readFileListAsBuffers(filePathList: string[]): Promise<IMapedFile[]> {

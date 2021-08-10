@@ -1,5 +1,5 @@
 # find-duplicate-files
-A little script to find duplicate files by content in a given directory.
+A little script to find duplicate images by content in a given directory.
 
 # How to use
 > ❗ Make sure to have at least node version 14 installed on your local machine.
