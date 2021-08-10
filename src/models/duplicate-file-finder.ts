@@ -40,7 +40,7 @@ export class DuplicateFileFinder {
         const filePath = filePathList[elem]!;
 
         return {
-          name: filePath.split('/').pop()!,
+          name: filePath.split('/').pop() ?? '',
           path: filePath,
         };
       });
