@@ -35,7 +35,7 @@
     }
 
     .col {
-      width: 33%;
+      width: 25%;
       height: 100%;
       display: flex;
       justify-content: start;
@@ -45,11 +45,11 @@
       max-height: var(--max-cell-height);
     }
 
-    .col:nth-child(2) {      
+    .col:nth-child(2) {
       justify-content: center;
     }
-    
-    .col:nth-child(3) {      
+
+    .col:nth-child(3) {
       justify-content: end;
     }
 
@@ -64,6 +64,8 @@
 
 <body>
   <div id="container"></div>
+
+  <button id="delete" onclick="generateDeleteFile()">Generate delete file</button>
 
   <script>
     const table = document.getElementById('container');
@@ -101,10 +103,36 @@
         tableColPreview.appendChild(imageElement);
         tableRow.appendChild(tableColPreview);
 
+        const tableColDelete = document.createElement('div');
+        tableColDelete.classList.add('col');
+        const inputElement = document.createElement('input');
+        inputElement.type = 'checkbox';
+        tableColDelete.appendChild(inputElement);
+        tableRow.appendChild(tableColDelete);
+
         groupContainer.appendChild(tableRow);
       }
 
       table.appendChild(groupContainer);
+    }
+
+    function generateDeleteFile() {
+      const checked = [];
+      const nodes = document.querySelectorAll('input[type=checkbox]');
+      for (const node of nodes) {
+        if (node.checked) {
+          checked.push(node);
+        }
+      }
+
+      const links = checked.map((i) => i.parentNode.parentNode.children[1].children[0].innerText);
+      const anchor = document.createElement('a');
+      const blob = new Blob([JSON.stringify(links)], { 
+        type: 'application/json',         
+      });
+      anchor.href = URL.createObjectURL(blob);
+      anchor.download = 'delete-duplicate-list.json';
+      anchor.click();
     }
   </script>
 </body>

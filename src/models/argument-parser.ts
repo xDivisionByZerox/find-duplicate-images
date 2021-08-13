@@ -1,10 +1,14 @@
 import commandLineArgs, { OptionDefinition } from 'command-line-args';
-import { Config } from './config';
+import { DeleteConfig, FindConfig } from './config';
 import { IResultHandlerConstructor } from './result-handler';
 import { Util } from './util';
 
-interface ConfigOptionDefinition extends OptionDefinition {
-  name: keyof Config;
+interface FindConfigOptionDefinition extends OptionDefinition {
+  name: keyof FindConfig;
+}
+
+interface DeleteConfigOptionDefinition extends OptionDefinition {
+  name: keyof DeleteConfig;
 }
 
 export class ArgumentParser {
@@ -15,7 +19,7 @@ export class ArgumentParser {
     outputDir: Util.getPath(__dirname, 'duplicate-files'),
   };
 
-  private static $ClaOptionDefinition: ConfigOptionDefinition[] = [
+  private static findDefinition: FindConfigOptionDefinition[] = [
     {
       name: 'htmlFileName',
       alias: 'h',
@@ -42,13 +46,31 @@ export class ArgumentParser {
     },
   ];
 
-  static parseArguments() {
-    const options = commandLineArgs(this.$ClaOptionDefinition);
-    if (!Config.hasConfig(options)) {
+  private static deleteDefinition: DeleteConfigOptionDefinition[] = [
+    {
+      name: 'path',
+      alias: 'p',
+      defaultOption: true,
+      type: String,
+    }
+  ];
+
+  static parseFindArguments() {
+    const options = commandLineArgs(this.findDefinition);
+    if (!FindConfig.hasConfig(options)) {
       throw new Error('invalid or missing params');
     }
 
-    return new Config(options);
+    return new FindConfig(options);
+  }
+
+  static parseDeleteArguments() {
+    const options = commandLineArgs(this.deleteDefinition);
+    if (!DeleteConfig.hasConfig(options)) {
+      throw new Error('invalid or missing params');
+    }
+
+    return new DeleteConfig(options);
   }
 
 }

@@ -4,7 +4,8 @@
   "description": "A little script to find duplicate images by content in a given directory.",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "delete": "ts-node src/delete.ts"
   },
   "repository": {
     "type": "git",
