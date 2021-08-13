@@ -9,7 +9,7 @@ export interface IFileInfo {
 
 (async () => {
   try {
-    const config = ArgumentParser.parseArguments();
+    const config = ArgumentParser.parseFindArguments();
     const results = await new DuplicateFileFinder({ pathToCheck: config.pathToCheck }).find();
     await new ResultHandler({
       htmlFileName: config.htmlFileName,
