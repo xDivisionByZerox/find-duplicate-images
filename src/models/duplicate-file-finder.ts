@@ -92,13 +92,28 @@ export class DuplicateFileFinder {
   }
 
   private async readFileListAsBuffers(filePathList: string[]): Promise<IMapedFile[]> {
+    interface IBufferMapedIndex {
+      buffer: Buffer;
+      fileIndex: number;
+    }
+
     const timerLabel = `Read ${filePathList.length} files in`;
     console.time(timerLabel);
-    const promises = filePathList.map((filePath) => fsPromise.readFile(filePath));
-    const buffers = await Promise.all(promises);
-    const map = filePathList.map((filePath, index): IMapedFile => ({
-      path: filePath,
-      buffer: buffers[index]!,
+    const promises = filePathList.map((filePath, index) => fsPromise.readFile(filePath).then((res) => ({
+      buffer: res,
+      fileIndex: index,
+    })));
+    const settled = await Promise.allSettled(promises);
+    const mapedBuffers: IBufferMapedIndex[] = [];
+    for (const res of settled) {
+      if (res.status === 'fulfilled') {
+        mapedBuffers.push(res.value);
+      }
+    }
+
+    const map = mapedBuffers.map((maped): IMapedFile => ({
+      buffer: maped.buffer,
+      path: filePathList[maped.fileIndex]!,
     }));
     console.timeEnd(timerLabel);
 
