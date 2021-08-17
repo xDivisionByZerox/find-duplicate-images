@@ -1,6 +1,7 @@
 import fs from 'fs';
 import fsPromise from 'fs/promises';
 import { IFileInfo } from '..';
+import { Timer } from './timer';
 import { Util } from './util';
 
 interface IMapedFile {
@@ -92,45 +93,57 @@ export class DuplicateFileFinder {
   }
 
   private async readFileListAsBuffers(filePathList: string[]): Promise<IMapedFile[]> {
-    const timerLabel = `Read ${filePathList.length} files in`;
-    console.time(timerLabel);
-    const promises = filePathList.map((filePath) => fsPromise.readFile(filePath));
-    const buffers = await Promise.all(promises);
-    const map = filePathList.map((filePath, index): IMapedFile => ({
-      path: filePath,
-      buffer: buffers[index]!,
-    }));
-    console.timeEnd(timerLabel);
+    return new Timer(`Read ${filePathList.length} files in`).run(async () => {
+      interface IBufferMapedIndex {
+        buffer: Buffer;
+        fileIndex: number;
+      }
 
-    return map;
+      const promises = filePathList.map((filePath, index) => fsPromise.readFile(filePath).then((res) => ({
+        buffer: res,
+        fileIndex: index,
+      })));
+      const settled = await Promise.allSettled(promises);
+      const mapedBuffers: IBufferMapedIndex[] = [];
+      for (const res of settled) {
+        if (res.status === 'fulfilled') {
+          mapedBuffers.push(res.value);
+        }
+      }
+
+      const map = mapedBuffers.map((maped): IMapedFile => ({
+        buffer: maped.buffer,
+        path: filePathList[maped.fileIndex]!,
+      }));
+
+      return map;
+    });
   }
 
   private async findDuplicatedFromMapedFileList(list: IMapedFile[]): Promise<[number, number][]> {
-    const groupsOfSameFiles: [number, number][] = [];
-
-    const timerLabel = `Compared ${list.length} files in`;
-    console.time(timerLabel);
-    list.forEach((file, i) => {
-      list.forEach((file2, k) => {
-        if (i === k) {
-          return;
-        }
-
-        if (!file.buffer.equals(file2.buffer)) {
-          return;
-        }
-
-        const isIn = groupsOfSameFiles.find((elem) => elem.includes(i) && elem.includes(k));
-        if (isIn) {
-          return;
-        }
-
-        groupsOfSameFiles.push([i, k]);
+    return new Timer(`Compared ${list.length} files in`).run(() => {
+      const groupsOfSameFiles: [number, number][] = [];
+      list.forEach((file, i) => {
+        list.forEach((file2, k) => {
+          if (i === k) {
+            return;
+          }
+  
+          if (!file.buffer.equals(file2.buffer)) {
+            return;
+          }
+  
+          const isIn = groupsOfSameFiles.find((elem) => elem.includes(i) && elem.includes(k));
+          if (isIn) {
+            return;
+          }
+  
+          groupsOfSameFiles.push([i, k]);
+        });
       });
+      console.log('Found', groupsOfSameFiles.length, 'possible duplicates');
+  
+      return groupsOfSameFiles;
     });
-    console.timeEnd(timerLabel);
-    console.log('Found', groupsOfSameFiles.length, 'possible duplicates');
-
-    return groupsOfSameFiles;
   }
 }

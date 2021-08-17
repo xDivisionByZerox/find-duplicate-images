@@ -14,19 +14,16 @@ export class ResultHandler {
 
   private readonly $outputDir: string;
 
-  private readonly $htmlOutputFileName: string;
-  private readonly getHtmlOutputFilePath = () => Util.getPath(this.$outputDir, this.$htmlOutputFileName);
-
-  private readonly $jsOutputFileName: string;
-  private readonly getJsOutputFilePath = () => Util.getPath(this.$outputDir, this.$jsOutputFileName);
+  private readonly $htmlOutputFilePath: string;
+  private readonly $jsOutputFilePath: string;
 
   private readonly $htmlTemplateFileName = 'index.template.html';
-  private readonly getHtmlTemplateFilePath = () => Util.getPath(path.dirname(process.argv[1]!), this.$htmlTemplateFileName);
+  private readonly getHtmlTemplateFilePath = Util.getPath(path.dirname(process.argv[1]!), this.$htmlTemplateFileName);
 
   constructor(params: IResultHandlerConstructor) {
     this.$outputDir = params.outputDir;
-    this.$htmlOutputFileName = params.htmlFileName;
-    this.$jsOutputFileName = params.jsFileName;
+    this.$htmlOutputFilePath = Util.getPath(this.$outputDir, params.htmlFileName);
+    this.$jsOutputFilePath = Util.getPath(this.$outputDir, params.jsFileName);
   }
 
   async ouputResults(files: IFileInfo[][]) {
@@ -35,16 +32,16 @@ export class ResultHandler {
     });
     
     await Promise.all([
-      fsPromise.writeFile(this.getJsOutputFilePath(), `const data = ${JSON.stringify(files)};`),
-      fsPromise.copyFile(this.getHtmlTemplateFilePath(), this.getHtmlOutputFilePath()),
+      fsPromise.writeFile(this.$jsOutputFilePath, `const data = ${JSON.stringify(files)};`),
+      fsPromise.copyFile(this.getHtmlTemplateFilePath, this.$htmlOutputFilePath),
     ]);
 
     try {
       console.log('Trying to automatically open results');
       const cmd = this.getStartBrowserCommand();
-      execSync(`${cmd} ${this.getHtmlOutputFilePath()}`);
+      execSync(`${cmd} ${this.$htmlOutputFilePath}`);
     } catch {
-      console.log('Coult not open results automatically. Please open', this.getHtmlOutputFilePath(), 'in your browser to view the results.');
+      console.log('Coult not open results automatically. Please open', this.$htmlOutputFilePath, 'in your browser to view the results.');
     }
   }
 

@@ -16,8 +16,9 @@ export interface IFileInfo {
     }
 
     const promises = data.map((d) => unlink(d));
-    await Promise.all(promises);
-    console.log('Deleted', data.length, 'files');
+    const result = await Promise.allSettled(promises);
+    const deletedArr = result.filter((res) => res.status === 'fulfilled');
+    console.log('Deleted', deletedArr.length, 'files');
   } catch (error) {
     console.log('could not delete files');
     console.log(error);
