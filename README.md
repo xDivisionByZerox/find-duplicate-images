@@ -34,3 +34,6 @@ The repository offers a second prebuild script to delete all files from such a `
 ```
 
 The script will print out how many files got deleted.
+
+## Example:
+![Example gif](documentation\example.gif)
