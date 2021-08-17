@@ -36,4 +36,4 @@ The repository offers a second prebuild script to delete all files from such a `
 The script will print out how many files got deleted.
 
 ## Example:
-![Example gif](https://github.com/xDivisionByZerox/find-duplicate-images/blob/main/documentation/example.gif)
+![Example gif](documentation/example.gif)
