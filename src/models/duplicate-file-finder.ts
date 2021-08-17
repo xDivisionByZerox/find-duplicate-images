@@ -99,9 +99,10 @@ export class DuplicateFileFinder {
       const mapedList: IMapedFile[] = [];
 
       // split file list into sub lists to not overstep max memory usage while reading a bunch of buffers
-      const step = 1024;
-      for (let i = 0; i <= filePathList.length - 1; i += step) {
-        const currList = filePathList.slice(i, i + step);
+      // todo: make part size dynamic based on free memory (use freemem imported by os)
+      const partSize = 1024;
+      for (let i = 0; i <= filePathList.length - 1; i += partSize) {
+        const currList = filePathList.slice(i, i + partSize);
 
         const promises: Promise<{
           buffer: Buffer;
