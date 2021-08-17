@@ -1,12 +1,13 @@
 import fs from 'fs';
 import fsPromise from 'fs/promises';
 import { IFileInfo } from '..';
+import { CRC } from './crc';
 import { Timer } from './timer';
 import { Util } from './util';
 
 interface IMapedFile {
   path: string;
-  buffer: Buffer;
+  crc32: number;
 }
 
 export interface IDuplicateFileFinderConstructor {
@@ -16,6 +17,7 @@ export interface IDuplicateFileFinderConstructor {
 export class DuplicateFileFinder {
 
   private readonly $pathToCheck: string;
+  private readonly $crcHelper = new CRC();
 
   constructor(params: IDuplicateFileFinderConstructor) {
     const { pathToCheck } = params;
@@ -27,11 +29,11 @@ export class DuplicateFileFinder {
   }
 
   public async find(): Promise<IFileInfo[][]> {
-    const { filePathList, subDirectorys } = await this.findFiles(this.$pathToCheck);
+    const { filePathList, subDirectorys } = await this.findElementsInDir(this.$pathToCheck);
     console.log('Found', filePathList.length, 'files in', subDirectorys.length, 'subdirectories.');
     console.log('Start searching for duplicates.')
 
-    const map = await this.readFileListAsBuffers(filePathList);
+    const map = await this.hashFileList(filePathList);
     const groupsOfSameFiles = await this.findDuplicatedFromMapedFileList(map);
 
     const formatedResults: IFileInfo[][] = groupsOfSameFiles.map((group): IFileInfo[] => {
@@ -48,7 +50,7 @@ export class DuplicateFileFinder {
     return formatedResults;
   }
 
-  private async findFiles(givenPath: string) {
+  private async findElementsInDir(givenPath: string) {
     const directoryOutput = await fsPromise.readdir(givenPath);
     const pathList = directoryOutput.map((fileName) => Util.getPath(givenPath, fileName));
 
@@ -64,7 +66,7 @@ export class DuplicateFileFinder {
     }
 
     for (const subDir of subDirectorys) {
-      const result = await this.findFiles(subDir);
+      const result = await this.findElementsInDir(subDir);
       filePathList.push(...result.filePathList);
     }
 
@@ -92,31 +94,39 @@ export class DuplicateFileFinder {
     ].includes(extension.toLowerCase());
   }
 
-  private async readFileListAsBuffers(filePathList: string[]): Promise<IMapedFile[]> {
-    return new Timer(`Read ${filePathList.length} files in`).run(async () => {
-      interface IBufferMapedIndex {
-        buffer: Buffer;
-        fileIndex: number;
-      }
+  private async hashFileList(filePathList: string[]): Promise<IMapedFile[]> {
+    return new Timer(`Hashed ${filePathList.length} files in`).run(async () => {
+      const mapedList: IMapedFile[] = [];
 
-      const promises = filePathList.map((filePath, index) => fsPromise.readFile(filePath).then((res) => ({
-        buffer: res,
-        fileIndex: index,
-      })));
-      const settled = await Promise.allSettled(promises);
-      const mapedBuffers: IBufferMapedIndex[] = [];
-      for (const res of settled) {
-        if (res.status === 'fulfilled') {
-          mapedBuffers.push(res.value);
+      // split file list into sub lists to not overstep max memory usage while reading a bunch of buffers
+      const step = 1024;
+      for (let i = 0; i <= filePathList.length - 1; i += step) {
+        const currList = filePathList.slice(i, i + step);
+
+        const promises: Promise<{
+          buffer: Buffer;
+          fileIndex: number;
+        }>[] = [];
+        for (let fileIndex = 0; fileIndex <= currList.length - 1; fileIndex++) {
+          const promise = fsPromise.readFile(currList[fileIndex]!).then((buffer) => ({ buffer, fileIndex }));
+          promises.push(promise);
+        }
+
+        const settled = await Promise.allSettled(promises);
+        for (const res of settled) {
+          if (res.status !== 'fulfilled') {
+            continue;
+          }
+
+          const { buffer, fileIndex } = res.value;
+          mapedList.push({
+            crc32: this.$crcHelper.generate(buffer.toString()),
+            path: filePathList[fileIndex]!,
+          });
         }
       }
 
-      const map = mapedBuffers.map((maped): IMapedFile => ({
-        buffer: maped.buffer,
-        path: filePathList[maped.fileIndex]!,
-      }));
-
-      return map;
+      return mapedList;
     });
   }
 
@@ -128,21 +138,21 @@ export class DuplicateFileFinder {
           if (i === k) {
             return;
           }
-  
-          if (!file.buffer.equals(file2.buffer)) {
+
+          if (file.crc32 !== file2.crc32) {
             return;
           }
-  
+
           const isIn = groupsOfSameFiles.find((elem) => elem.includes(i) && elem.includes(k));
           if (isIn) {
             return;
           }
-  
+
           groupsOfSameFiles.push([i, k]);
         });
       });
       console.log('Found', groupsOfSameFiles.length, 'possible duplicates');
-  
+
       return groupsOfSameFiles;
     });
   }
