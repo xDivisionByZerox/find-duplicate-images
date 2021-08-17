@@ -2,7 +2,8 @@
 A little script to find duplicate images by content in a given directory.
 
 # How to use
-> ❗ Make sure to have at least node version 14 installed on your local machine.
+> ❗ Make sure to have at least node version 14 installed on your local machine.  
+You can download the latest version [here](https://nodejs.org).
 
 Clone the repo.
 ```
