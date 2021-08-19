@@ -29,10 +29,13 @@ export class DuplicateFileFinder {
   }
 
   public async find(): Promise<IFileInfo[][]> {
-    const { filePathList, subDirectorys } = await this.findElementsInDir(this.$pathToCheck);
+    const { filePathList, subDirectorys, totalBytes } = await this.findElementsInDir(this.$pathToCheck);
+    const totalMb = totalBytes / Math.pow(1024, 2);
     console.log('Found', filePathList.length, 'files in', subDirectorys.length, 'subdirectories.');
+    console.log('Total size:', totalMb, 'mB');
     console.log('Start searching for duplicates.')
 
+    // todo based on total size, hash files (slower but larger data) or compare buffers directly (faster but holds all buffer sin memory)
     const map = await this.hashFileList(filePathList);
     const groupsOfSameFiles = await this.findDuplicatedFromMapedFileList(map);
 
@@ -56,10 +59,12 @@ export class DuplicateFileFinder {
 
     const filePathList: string[] = [];
     const subDirectorys: string[] = [];
+    let totalBytes = 0;
     for (const path of pathList) {
       const stat = fs.statSync(path);
       if (stat.isFile() && this.isImageFile(path)) {
         filePathList.push(path);
+        totalBytes = totalBytes + stat.size;
       } else if (stat.isDirectory()) {
         subDirectorys.push(path);
       }
@@ -68,11 +73,13 @@ export class DuplicateFileFinder {
     for (const subDir of subDirectorys) {
       const result = await this.findElementsInDir(subDir);
       filePathList.push(...result.filePathList);
+      totalBytes = totalBytes + result.totalBytes;
     }
 
     return {
       filePathList,
       subDirectorys,
+      totalBytes,
     };
   }
 
