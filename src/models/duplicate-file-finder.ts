@@ -1,14 +1,9 @@
 import fs from 'fs';
 import fsPromise from 'fs/promises';
 import { IFileInfo } from '..';
-import { CRC } from './crc';
+import { FileReader } from './file-reader';
 import { Timer } from './timer';
 import { Util } from './util';
-
-interface IMapedFile {
-  path: string;
-  crc32: number;
-}
 
 export interface IDuplicateFileFinderConstructor {
   pathToCheck: string;
@@ -17,7 +12,6 @@ export interface IDuplicateFileFinderConstructor {
 export class DuplicateFileFinder {
 
   private readonly $pathToCheck: string;
-  private readonly $crcHelper = new CRC();
 
   constructor(params: IDuplicateFileFinderConstructor) {
     const { pathToCheck } = params;
@@ -32,12 +26,12 @@ export class DuplicateFileFinder {
     const { filePathList, subDirectorys, totalBytes } = await this.findElementsInDir(this.$pathToCheck);
     const totalMb = totalBytes / Math.pow(1024, 2);
     console.log('Found', filePathList.length, 'files in', subDirectorys.length, 'subdirectories.');
-    console.log('Total size:', totalMb, 'mB');
+    console.log('Total size:', totalMb.toFixed(2), 'mB');
     console.log('Start searching for duplicates.')
 
     // todo based on total size, hash files (slower but larger data) or compare buffers directly (faster but holds all buffer sin memory)
-    const map = await this.hashFileList(filePathList);
-    const groupsOfSameFiles = await this.findDuplicatedFromMapedFileList(map);
+    const readResult = await new FileReader(filePathList, totalBytes).read();
+    const groupsOfSameFiles = await this.findDuplicatedFromReadResult(readResult.map((elem) => elem.result))
 
     const formatedResults: IFileInfo[][] = groupsOfSameFiles.map((group): IFileInfo[] => {
       return group.map((elem) => {
@@ -101,67 +95,43 @@ export class DuplicateFileFinder {
     ].includes(extension.toLowerCase());
   }
 
-  private async hashFileList(filePathList: string[]): Promise<IMapedFile[]> {
-    return new Timer(`Hashed ${filePathList.length} files in`).run(async () => {
-      const mapedList: IMapedFile[] = [];
-
-      // split file list into sub lists to not overstep max memory usage while reading a bunch of buffers
-      // todo: make part size dynamic based on free memory (use freemem imported by os)
-      const partSize = 1024;
-      for (let i = 0; i <= filePathList.length - 1; i += partSize) {
-        const currList = filePathList.slice(i, i + partSize);
-
-        const promises: Promise<{
-          buffer: Buffer;
-          fileIndex: number;
-        }>[] = [];
-        for (let fileIndex = 0; fileIndex <= currList.length - 1; fileIndex++) {
-          const promise = fsPromise.readFile(currList[fileIndex]!).then((buffer) => ({ buffer, fileIndex }));
-          promises.push(promise);
-        }
-
-        const settled = await Promise.allSettled(promises);
-        for (const res of settled) {
-          if (res.status !== 'fulfilled') {
+  private async findDuplicatedFromReadResult(list: (number | Buffer)[]): Promise<[number, number][]> {
+    return new Timer(`Compared ${list.length} files in`).run(() => {
+      const groupsOfSameFiles: [number, number][] = [];
+      for (let i = 0; i < list.length - 1; i++) {
+        const res1 = list[i]!;
+        for (let k = 0; k < list.length - 1; k++) {
+          if (i === k) {
             continue;
           }
 
-          const { buffer, fileIndex } = res.value;
-          mapedList.push({
-            crc32: this.$crcHelper.generate(buffer.toString()),
-            path: filePathList[fileIndex]!,
-          });
-        }
-      }
-
-      return mapedList;
-    });
-  }
-
-  private async findDuplicatedFromMapedFileList(list: IMapedFile[]): Promise<[number, number][]> {
-    return new Timer(`Compared ${list.length} files in`).run(() => {
-      const groupsOfSameFiles: [number, number][] = [];
-      list.forEach((file, i) => {
-        list.forEach((file2, k) => {
-          if (i === k) {
-            return;
+          const res2 = list[k]!;
+          if (res1 instanceof Buffer && res2 instanceof Buffer) {
+            if(!res1.equals(res2)) {
+              continue;
+            }
           }
 
-          if (file.crc32 !== file2.crc32) {
-            return;
+          if (typeof res1 === 'number' && typeof res2 === 'number') {
+            if(res1 !== res2) {
+              continue;
+            }
           }
+          // results can both only be from type number or buffer 
 
           const isIn = groupsOfSameFiles.find((elem) => elem.includes(i) && elem.includes(k));
           if (isIn) {
-            return;
+            continue;
           }
 
           groupsOfSameFiles.push([i, k]);
-        });
-      });
+        }
+      }
+
       console.log('Found', groupsOfSameFiles.length, 'possible duplicates');
 
       return groupsOfSameFiles;
     });
   }
+
 }
