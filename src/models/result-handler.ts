@@ -26,7 +26,13 @@ export class ResultHandler {
     this.$jsOutputFilePath = Util.getPath(this.$outputDir, params.jsFileName);
   }
 
-  async ouputResults(files: IFileInfo[][]) {
+  async ouputResults(files: IFileInfo[][]): Promise<void> {
+    if(files.length <= 0) {
+      console.log('There were no duplicates found. You\'re good to go!');
+
+      return;
+    }
+
     await fsPromise.mkdir(this.$outputDir, {
       recursive: true,
     });
