@@ -25,11 +25,14 @@ export class FileReader {
 
   async read(): Promise<IBufferResult[] | ICrcResult[]> {
     const freeBytes = freemem();
-    // 0.5 GiB
-    const memoryBuffer = 0.5 * Math.pow(1024, 3);
-    if (this.$totalBytes < freeBytes - memoryBuffer) {
+    const memoryBufferGiB = 0.5 * Math.pow(1024, 3);
+    if (this.$totalBytes < freeBytes - memoryBufferGiB) {
       return this.asBufferMap();
     }
+
+    console.log('Total file size will exceed available.');
+    console.log('Will use file hashing algorithm. This will run much slower.');
+    console.log('To speed up this process, search in directorys with not that many files at the same time.');
 
     return this.asCrc32Map();
   }
@@ -95,4 +98,5 @@ export class FileReader {
 
     return map;
   }
+
 }
