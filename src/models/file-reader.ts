@@ -44,30 +44,26 @@ export class FileReader {
     // todo: make part size dynamic based on free memory (use freemem imported by os)
     const partSize = 1024;
     const max = this.$filePathList.length - 1;
+    let finished = 0;
     for (let i = 0; i <= max; i += partSize) {
       const currList = this.$filePathList.slice(i, i + partSize);
 
-      const promises: Promise<{
-        buffer: Buffer;
-        fileIndex: number;
-      }>[] = [];
+      const promises: Promise<void>[] = [];
       for (let fileIndex = 0; fileIndex <= currList.length - 1; fileIndex++) {
-        const promise = fsPromise.readFile(currList[fileIndex]!).then((buffer) => ({ buffer, fileIndex }));
+        const path = currList[fileIndex]!;
+        const promise = fsPromise.readFile(path).then((buffer) => {
+          mapedList.push({
+            result: this.$crcHelper.generate(buffer.toString()),
+            path,
+          });
+        });
         promises.push(promise);
       }
 
       const settled = await Promise.allSettled(promises);
-      for (const res of settled) {
-        if (res.status !== 'fulfilled') {
-          continue;
-        }
+      finished += settled.filter((elem) => elem.status === 'fulfilled').length;
 
-        const { buffer, fileIndex } = res.value;
-        mapedList.push({
-          result: this.$crcHelper.generate(buffer.toString()),
-          path: this.$filePathList[fileIndex]!,
-        });
-      }
+      console.log('Processed', finished, '/', this.$filePathList.length, 'images');
     }
 
     return mapedList;
