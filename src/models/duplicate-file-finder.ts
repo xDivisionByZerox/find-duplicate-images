@@ -98,13 +98,17 @@ export class DuplicateFileFinder {
     return new Timer(`Compared ${list.length} files in`).run(() => {
       const groupsOfSameFiles: [number, number][] = [];
       for (let i = 0; i < list.length - 1; i++) {
-        const res1 = list[i]!;
-        for (let k = i; k < list.length - 1; k++) {
-          if (i === k) {
+        const res1 = list[i];
+        if(res1 === undefined) {
+          continue;
+        }
+
+        for (let k = i + 1; k < list.length - 1; k++) {
+          const res2 = list[k];
+          if(res2 === undefined) {
             continue;
           }
 
-          const res2 = list[k]!;
           if (res1 instanceof Buffer && res2 instanceof Buffer) {
             if(!res1.equals(res2)) {
               continue;
