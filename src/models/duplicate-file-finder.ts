@@ -29,7 +29,6 @@ export class DuplicateFileFinder {
     console.log('Total size:', totalMb.toFixed(2), 'mB');
     console.log('Start searching for duplicates.')
 
-    // todo based on total size, hash files (slower but larger data) or compare buffers directly (faster but holds all buffer sin memory)
     const readResult = await new FileReader(filePathList, totalBytes).read();
     const groupsOfSameFiles = await this.findDuplicatedFromReadResult(readResult.map((elem) => elem.result))
 
@@ -100,7 +99,7 @@ export class DuplicateFileFinder {
       const groupsOfSameFiles: [number, number][] = [];
       for (let i = 0; i < list.length - 1; i++) {
         const res1 = list[i]!;
-        for (let k = 0; k < list.length - 1; k++) {
+        for (let k = i; k < list.length - 1; k++) {
           if (i === k) {
             continue;
           }
