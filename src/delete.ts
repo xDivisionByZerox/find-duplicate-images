@@ -1,11 +1,6 @@
 import { ArgumentParser } from './models/argument-parser';
 import { readFile, unlink } from 'fs/promises'
 
-export interface IFileInfo {
-  name: string;
-  path: string;
-}
-
 (async () => {
   try {
     const config = ArgumentParser.parseDeleteArguments();
