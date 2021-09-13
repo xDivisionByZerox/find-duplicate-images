@@ -6,11 +6,13 @@ import { Util } from './util';
 
 export interface IDuplicateFileFinderConstructor {
   pathToCheck: string;
+  recursive: boolean;
 }
 
 export class DuplicateFileFinder {
 
   private readonly $pathToCheck: string;
+  private readonly $recursive: boolean;
 
   constructor(params: IDuplicateFileFinderConstructor) {
     const { pathToCheck } = params;
@@ -19,6 +21,7 @@ export class DuplicateFileFinder {
     }
 
     this.$pathToCheck = pathToCheck;
+    this.$recursive = params.recursive;
   }
 
   public async find(): Promise<string[][]> {
@@ -56,10 +59,12 @@ export class DuplicateFileFinder {
       }
     }
 
-    for (const subDir of subDirectorys) {
-      const result = await this.findElementsInDir(subDir);
-      filePathList.push(...result.filePathList);
-      totalBytes = totalBytes + result.totalBytes;
+    if (this.$recursive) {
+      for (const subDir of subDirectorys) {
+        const result = await this.findElementsInDir(subDir);
+        filePathList.push(...result.filePathList);
+        totalBytes = totalBytes + result.totalBytes;
+      }
     }
 
     return {
@@ -94,7 +99,7 @@ export class DuplicateFileFinder {
       let topIteration = 0;
       while (list.length > 0) {
         topIteration++;
-        if(topIteration % 1e3 === 0) {
+        if (topIteration % 1e3 === 0) {
           console.log('processed', topIteration, '/', totalFiles, 'files');
         }
 

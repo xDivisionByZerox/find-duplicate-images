@@ -44,6 +44,11 @@ export class ArgumentParser {
       type: String,
       defaultValue: ArgumentParser.defaultConfig.outputDir,
     },
+    {
+      name: 'recursive',
+      type: Boolean,
+      defaultValue: true,
+    }
   ];
 
   private static deleteDefinition: DeleteConfigOptionDefinition[] = [

@@ -2,18 +2,20 @@ import { IDuplicateFileFinderConstructor } from './duplicate-file-finder';
 import { IResultHandlerConstructor } from './result-handler';
 import { Util } from './util';
 
-export class FindConfig implements IResultHandlerConstructor, IDuplicateFileFinderConstructor {
-  
+export class FindConfig implements Required<IResultHandlerConstructor>, Required<IDuplicateFileFinderConstructor> {
+
   pathToCheck: string;
   outputDir: string;
   jsFileName: string;
   htmlFileName: string;
+  recursive: boolean;
 
   constructor(params: FindConfig) {
     this.htmlFileName = params.htmlFileName;
     this.jsFileName = params.jsFileName;
     this.outputDir = params.outputDir;
     this.pathToCheck = params.pathToCheck;
+    this.recursive = params.recursive ?? true;
   }
 
   static hasConfig = (value: unknown): value is FindConfig => (
@@ -22,12 +24,16 @@ export class FindConfig implements IResultHandlerConstructor, IDuplicateFileFind
     && typeof value.jsFileName === 'string'
     && typeof value.outputDir === 'string'
     && typeof value.pathToCheck === 'string'
+    && (
+      value.recursive === undefined
+      || typeof value.recursive === 'boolean'
+    )
   )
 
 }
 
 export class DeleteConfig {
-  
+
   path: string;
 
   constructor(params: DeleteConfig) {

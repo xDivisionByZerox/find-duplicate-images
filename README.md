@@ -35,5 +35,12 @@ The repository offers a second prebuild script to delete all files from such a `
 
 The script will print out how many files got deleted.
 
+## CLI arguments
+
+| Key         | Alias | Description                                                                   |
+|-------------|-------|-------------------------------------------------------------------------------|
+| pathToCheck | p     | The absolute path you want to check for duplicate images                      |
+| recursive   | -     | Set if you want to search recursevly in the path you specified. Default: true |
+
 ## Example:
 ![Example gif](documentation/example.gif)
