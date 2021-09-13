@@ -78,42 +78,59 @@
       groupHeaderRow.innerText = 'Group ' + (index + 1);
       groupContainer.appendChild(groupHeaderRow);
 
-      for (const row of group) {
+      for (const path of group) {
         const tableRow = document.createElement('div');
         tableRow.classList.add('row')
 
-        const tableColName = document.createElement('div');
-        tableColName.classList.add('col');
-        tableColName.innerText = row.name;
-        tableRow.appendChild(tableColName);
-
-        const tableColPath = document.createElement('div');
-        tableColPath.classList.add('col');
-        const anchor = document.createElement('a');
-        anchor.href = row.path;
-        anchor.text = row.path;
-        tableColPath.appendChild(anchor);
-        tableRow.appendChild(tableColPath);
-
-        const tableColPreview = document.createElement('div');
-        tableColPreview.classList.add('col');
-        const imageElement = document.createElement('img');
-        imageElement.src = row.path;
-        imageElement.alt = 'Preview of photo with path ' + row.path;
-        tableColPreview.appendChild(imageElement);
-        tableRow.appendChild(tableColPreview);
-
-        const tableColDelete = document.createElement('div');
-        tableColDelete.classList.add('col');
-        const inputElement = document.createElement('input');
-        inputElement.type = 'checkbox';
-        tableColDelete.appendChild(inputElement);
-        tableRow.appendChild(tableColDelete);
+        tableRow.appendChild(createNameColumn(path));
+        tableRow.appendChild(createPathColumn(path));
+        tableRow.appendChild(createImageColumn(path));
+        tableRow.appendChild(createSelectColumn());
 
         groupContainer.appendChild(tableRow);
       }
 
       table.appendChild(groupContainer);
+    }
+
+    function createNameColumn(path) {
+      const tableColName = document.createElement('div');
+      tableColName.classList.add('col');
+      tableColName.innerText = path.replaceAll('\\', '/').split('/').pop();
+
+      return tableColName;
+    }
+
+    function createPathColumn(path) {
+      const tableColPath = document.createElement('div');
+      tableColPath.classList.add('col');
+      const anchor = document.createElement('a');
+      anchor.href = path;
+      anchor.text = path;
+      tableColPath.appendChild(anchor);
+
+      return tableColPath;
+    }
+
+    function createImageColumn(path) {
+      const column = document.createElement('div');
+      column.classList.add('col');
+      const imageElement = document.createElement('img');
+      imageElement.src = path;
+      imageElement.alt = 'Preview of photo with path ' + path;
+      column.appendChild(imageElement);
+
+      return column;
+    }
+
+    function createSelectColumn() {
+      const column = document.createElement('div');
+      column.classList.add('col');
+      const inputElement = document.createElement('input');
+      inputElement.type = 'checkbox';
+      column.appendChild(inputElement);
+
+      return column;
     }
 
     function generateDeleteFile() {
@@ -127,8 +144,8 @@
 
       const links = checked.map((i) => i.parentNode.parentNode.children[1].children[0].innerText);
       const anchor = document.createElement('a');
-      const blob = new Blob([JSON.stringify(links)], { 
-        type: 'application/json',         
+      const blob = new Blob([JSON.stringify(links)], {
+        type: 'application/json',
       });
       anchor.href = URL.createObjectURL(blob);
       anchor.download = 'delete-duplicate-list.json';

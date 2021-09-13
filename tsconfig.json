@@ -35,10 +35,10 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
-    "target": "ES2021",
+    "target": "ESNext",
     "types": [
       "node"
-    ]
+    ],
   },
   "include": [
     "src/**/*.ts"

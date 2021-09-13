@@ -1,6 +1,5 @@
 import fs from 'fs';
 import fsPromise from 'fs/promises';
-import { IFileInfo } from '..';
 import { FileReader } from './file-reader';
 import { Timer } from './timer';
 import { Util } from './util';
@@ -22,7 +21,7 @@ export class DuplicateFileFinder {
     this.$pathToCheck = pathToCheck;
   }
 
-  public async find(): Promise<IFileInfo[][]> {
+  public async find(): Promise<string[][]> {
     const { filePathList, subDirectorys, totalBytes } = await this.findElementsInDir(this.$pathToCheck);
     const totalMb = totalBytes / Math.pow(1024, 2);
     console.log('Found', filePathList.length, 'files in', subDirectorys.length, 'subdirectories.');
@@ -30,18 +29,12 @@ export class DuplicateFileFinder {
     console.log('Start searching for duplicates.')
 
     const readResult = await new FileReader(filePathList, totalBytes).read();
-    const groupsOfSameFiles = await this.findDuplicatedFromReadResult(readResult.map((elem) => elem.result))
+    // for some reason the signatures are not compatible on this map
+    // @ts-ignore
+    const mapedResult = readResult.map((elem) => elem.result);
+    const sameFilesGroups = await this.findDuplicatedFromReadResult(mapedResult);
 
-    const formatedResults: IFileInfo[][] = groupsOfSameFiles.map((group): IFileInfo[] => {
-      return group.map((elem) => {
-        const filePath = filePathList[elem]!;
-
-        return {
-          name: filePath.split('/').pop() ?? '',
-          path: filePath,
-        };
-      });
-    });
+    const formatedResults: string[][] = sameFilesGroups.map((group) => group.map((elem) => filePathList[elem]!));
 
     return formatedResults;
   }
@@ -94,47 +87,70 @@ export class DuplicateFileFinder {
     ].includes(extension.toLowerCase());
   }
 
-  private async findDuplicatedFromReadResult(list: (number | Buffer)[]): Promise<[number, number][]> {
+  private async findDuplicatedFromReadResult(list: (number | Buffer)[]): Promise<number[][]> {
     return new Timer(`Compared ${list.length} files in`).run(() => {
-      const groupsOfSameFiles: [number, number][] = [];
-      for (let i = 0; i < list.length - 1; i++) {
-        const res1 = list[i];
-        if(res1 === undefined) {
+      const sameFileMap: Record<number, number[]> = {};
+      const totalFiles = list.length;
+      let topIteration = 0;
+      while (list.length > 0) {
+        topIteration++;
+        if(topIteration % 1e3 === 0) {
+          console.log('processed', topIteration, '/', totalFiles, 'files');
+        }
+
+        const currentIndex = list.length - 1;
+        const current = list.pop();
+        if (current === undefined) {
           continue;
         }
 
-        for (let k = i + 1; k < list.length - 1; k++) {
-          const res2 = list[k];
-          if(res2 === undefined) {
+        let removes = 0;
+        for (let compareIndex = 0; compareIndex <= list.length - 1; compareIndex++) {
+          const compare = list[compareIndex];
+          if (compare === undefined) {
             continue;
           }
 
-          if (res1 instanceof Buffer && res2 instanceof Buffer) {
-            if(!res1.equals(res2)) {
-              continue;
-            }
-          }
-
-          if (typeof res1 === 'number' && typeof res2 === 'number') {
-            if(res1 !== res2) {
-              continue;
-            }
-          }
-          // results can both only be from type number or buffer 
-
-          const isIn = groupsOfSameFiles.find((elem) => elem.includes(i) && elem.includes(k));
-          if (isIn) {
+          if (!this.isSame(current, compare)) {
             continue;
           }
 
-          groupsOfSameFiles.push([i, k]);
+          const existingValue = sameFileMap[currentIndex];
+          const realListIndex = compareIndex + removes;
+          if (existingValue === undefined) {
+            sameFileMap[currentIndex] = [realListIndex];
+          } else {
+            existingValue.push(realListIndex);
+          }
+
+          list.splice(compareIndex, 1);
+          compareIndex--;
+          removes++;
         }
       }
 
-      console.log('Found', groupsOfSameFiles.length, 'possible duplicates');
+      console.log('Found', Object.keys(sameFileMap).length, 'possible duplications');
 
-      return groupsOfSameFiles;
+      return Object.entries(sameFileMap).map(([key, value]) => {
+        value.push(parseInt(key));
+        return value;
+      });
     });
+  }
+
+  private isSame(value1: number | Buffer, value2: number | Buffer): boolean {
+    return (
+      (
+        value1 instanceof Buffer
+        && value2 instanceof Buffer
+        && value1.equals(value2)
+      )
+      || (
+        typeof value1 === 'number'
+        && typeof value2 === 'number'
+        && value1 === value2
+      )
+    )
   }
 
 }

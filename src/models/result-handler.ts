@@ -1,8 +1,7 @@
 import { execSync } from 'child_process';
 import fsPromise from 'fs/promises';
-import { IFileInfo } from '..';
-import { Util } from './util';
 import path from 'path';
+import { Util } from './util';
 
 export interface IResultHandlerConstructor {
   outputDir: string;
@@ -26,7 +25,7 @@ export class ResultHandler {
     this.$jsOutputFilePath = Util.getPath(this.$outputDir, params.jsFileName);
   }
 
-  async ouputResults(files: IFileInfo[][]): Promise<void> {
+  async ouputResults(files: string[][]): Promise<void> {
     if(files.length <= 0) {
       console.log('There were no duplicates found. You\'re good to go!');
 
