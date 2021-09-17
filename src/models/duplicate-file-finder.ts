@@ -27,7 +27,13 @@ export class DuplicateFileFinder {
   public async find(): Promise<string[][]> {
     const { filePathList, subDirectorys, totalBytes } = await this.findElementsInDir(this.$pathToCheck);
     const totalMb = totalBytes / Math.pow(1024, 2);
-    console.log('Found', filePathList.length, 'files in', subDirectorys.length, 'subdirectories.');
+
+    console.log('Found', filePathList.length, 'files');
+    if(this.$recursive) {
+      console.log('Deeply searched', subDirectorys.length, 'subdirectories.');
+    } else {      
+      console.log('Ignored', subDirectorys.length, 'subdirectories.');
+    }
     console.log('Total size:', totalMb.toFixed(2), 'mB');
     console.log('Start searching for duplicates.')
 
