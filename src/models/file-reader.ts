@@ -1,6 +1,8 @@
+import { statSync } from 'fs';
 import fsPromise from 'fs/promises';
 import { freemem } from 'os';
 import { CRC } from './crc';
+import { Util } from './util';
 
 export interface ICrcResult {
   path: string;
@@ -15,38 +17,89 @@ export interface IBufferResult {
 export class FileReader {
 
   private readonly $crcHelper = new CRC();
-  private readonly $filePathList: string[];
-  private readonly $totalBytes: number;
 
-  constructor(filePathList: string[], totalBytes: number) {
-    this.$filePathList = filePathList;
-    this.$totalBytes = totalBytes;
+  async read(directoyPath: string, recursive?: boolean): Promise<{
+    files: IBufferResult[] | ICrcResult[],
+    filePathes: string[],
+  }> {
+    const { filePathList, totalBytes } = await this.findElements(directoyPath, recursive);
+    const files = await this.readFromPathes(filePathList, totalBytes);
+
+    return { 
+      files, 
+      filePathes: filePathList, 
+    };
   }
 
-  async read(): Promise<IBufferResult[] | ICrcResult[]> {
+  private async findElements(directoyPath: string, recursive = false) {
+    const { filePathList, subDirectorys, totalBytes } = await this.readDirectory(directoyPath);
+    const totalMb = totalBytes / Math.pow(1024, 2);
+
+    console.log('Found', filePathList.length, 'files');
+    const param = recursive ? 'Deeply searched' : 'Ignored';
+    console.log(param, subDirectorys.length, 'subdirectories.');
+    console.log('Total size:', totalMb.toFixed(2), 'mB');
+    console.log('Start searching for duplicates.');
+
+    return { filePathList, totalBytes };
+  }
+
+  private async readDirectory(directoyPath: string, recursive = false) {
+    const directoryOutput = await fsPromise.readdir(directoyPath);
+    const pathList = directoryOutput.map((fileName) => Util.getPath(directoyPath, fileName));
+
+    const filePathList: string[] = [];
+    const subDirectorys: string[] = [];
+    let totalBytes = 0;
+    for (const path of pathList) {
+      const stat = statSync(path);
+      if (stat.isFile() && this.isImageFile(path)) {
+        filePathList.push(path);
+        totalBytes = totalBytes + stat.size;
+      } else if (stat.isDirectory()) {
+        subDirectorys.push(path);
+      }
+    }
+
+    if (recursive) {
+      for (const subDir of subDirectorys) {
+        const result = await this.readDirectory(subDir, recursive);
+        filePathList.push(...result.filePathList);
+        totalBytes = totalBytes + result.totalBytes;
+      }
+    }
+
+    return {
+      filePathList,
+      subDirectorys,
+      totalBytes,
+    };
+  }
+
+  private async readFromPathes(filePaths: string[], totalBytes: number) {
     const freeBytes = freemem();
     const memoryBufferGiB = 0.5 * Math.pow(1024, 3);
-    if (this.$totalBytes < freeBytes - memoryBufferGiB) {
-      return this.asBufferMap();
+    if (totalBytes < freeBytes - memoryBufferGiB) {
+      return this.asBufferMap(filePaths);
     }
 
     console.log('Total file size will exceed available.');
     console.log('Will use file hashing algorithm. This will run much slower.');
     console.log('To speed up this process, search in directorys with not that many files at the same time.');
 
-    return this.asCrc32Map();
+    return this.asCrc32Map(filePaths);
   }
 
-  async asCrc32Map(): Promise<ICrcResult[]> {
+  private async asCrc32Map(filePaths: string[]): Promise<ICrcResult[]> {
     const mapedList: ICrcResult[] = [];
 
     // split file list into sub lists to not overstep max memory usage while reading a bunch of buffers
     // todo: make part size dynamic based on free memory (use freemem imported by os)
     const partSize = 1024;
-    const max = this.$filePathList.length - 1;
+    const max = filePaths.length - 1;
     let finished = 0;
     for (let i = 0; i <= max; i += partSize) {
-      const currList = this.$filePathList.slice(i, i + partSize);
+      const currList = filePaths.slice(i, i + partSize);
 
       const promises: Promise<void>[] = [];
       for (let fileIndex = 0; fileIndex <= currList.length - 1; fileIndex++) {
@@ -63,19 +116,19 @@ export class FileReader {
       const settled = await Promise.allSettled(promises);
       finished += settled.filter((elem) => elem.status === 'fulfilled').length;
 
-      console.log('Processed', finished, '/', this.$filePathList.length, 'images');
+      console.log('Processed', finished, '/', filePaths.length, 'images');
     }
 
     return mapedList;
   }
 
-  async asBufferMap(): Promise<IBufferResult[]> {
+  private async asBufferMap(filePaths: string[]): Promise<IBufferResult[]> {
     interface IBufferMapedIndex {
       buffer: Buffer;
       fileIndex: number;
     }
 
-    const promises = this.$filePathList.map((filePath, index) => fsPromise.readFile(filePath).then((res) => ({
+    const promises = filePaths.map((filePath, index) => fsPromise.readFile(filePath).then((res) => ({
       buffer: res,
       fileIndex: index,
     })));
@@ -89,10 +142,29 @@ export class FileReader {
 
     const map = mapedBuffers.map((maped): IBufferResult => ({
       result: maped.buffer,
-      path: this.$filePathList[maped.fileIndex]!,
+      path: filePaths[maped.fileIndex]!,
     }));
 
     return map;
   }
+
+  private isImageFile = (path: string): boolean => {
+    const extension = path.split('.').pop();
+    if (extension === undefined) {
+      return false;
+    }
+
+    return [
+      'bmp',
+      'gif',
+      'jpeg',
+      'jpg',
+      'png',
+      'raw',
+      'tif',
+      'tiff',
+    ].includes(extension.toLowerCase());
+  }
+
 
 }

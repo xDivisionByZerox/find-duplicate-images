@@ -1,8 +1,6 @@
-import fs from 'fs';
-import fsPromise from 'fs/promises';
+import { ArgumentParser } from './argument-parser';
 import { FileReader } from './file-reader';
 import { Timer } from './timer';
-import { Util } from './util';
 
 export interface IDuplicateFileFinderConstructor {
   pathToCheck: string;
@@ -14,99 +12,36 @@ export class DuplicateFileFinder {
   private readonly $pathToCheck: string;
   private readonly $recursive: boolean;
 
-  constructor(params: IDuplicateFileFinderConstructor) {
-    const { pathToCheck } = params;
-    if (pathToCheck.length <= 0) {
+  constructor() {
+    const config = ArgumentParser.parseFindArguments();
+    if (config.pathToCheck.length <= 0) {
       throw new Error('"pathToCheck" cannot be empty.');
     }
 
-    this.$pathToCheck = pathToCheck;
-    this.$recursive = params.recursive;
+    this.$pathToCheck = config.pathToCheck;
+    this.$recursive = config.recursive;
   }
 
   public async find(): Promise<string[][]> {
-    const { filePathList, subDirectorys, totalBytes } = await this.findElementsInDir(this.$pathToCheck);
-    const totalMb = totalBytes / Math.pow(1024, 2);
-
-    console.log('Found', filePathList.length, 'files');
-    if(this.$recursive) {
-      console.log('Deeply searched', subDirectorys.length, 'subdirectories.');
-    } else {      
-      console.log('Ignored', subDirectorys.length, 'subdirectories.');
-    }
-    console.log('Total size:', totalMb.toFixed(2), 'mB');
-    console.log('Start searching for duplicates.')
-
-    const readResult = await new FileReader(filePathList, totalBytes).read();
+    const { files, filePathes } = await new FileReader().read(this.$pathToCheck, this.$recursive);
     // for some reason the signatures are not compatible on this map
     // @ts-ignore
-    const mapedResult = readResult.map((elem) => elem.result);
+    const mapedResult = files.map((elem) => elem.result);
     const sameFilesGroups = await this.findDuplicatedFromReadResult(mapedResult);
 
-    const formatedResults: string[][] = sameFilesGroups.map((group) => group.map((elem) => filePathList[elem]!));
+    const formatedResults: string[][] = sameFilesGroups.map((group) => group.map((elem) => filePathes[elem]!));
 
     return formatedResults;
   }
-
-  private async findElementsInDir(givenPath: string) {
-    const directoryOutput = await fsPromise.readdir(givenPath);
-    const pathList = directoryOutput.map((fileName) => Util.getPath(givenPath, fileName));
-
-    const filePathList: string[] = [];
-    const subDirectorys: string[] = [];
-    let totalBytes = 0;
-    for (const path of pathList) {
-      const stat = fs.statSync(path);
-      if (stat.isFile() && this.isImageFile(path)) {
-        filePathList.push(path);
-        totalBytes = totalBytes + stat.size;
-      } else if (stat.isDirectory()) {
-        subDirectorys.push(path);
-      }
-    }
-
-    if (this.$recursive) {
-      for (const subDir of subDirectorys) {
-        const result = await this.findElementsInDir(subDir);
-        filePathList.push(...result.filePathList);
-        totalBytes = totalBytes + result.totalBytes;
-      }
-    }
-
-    return {
-      filePathList,
-      subDirectorys,
-      totalBytes,
-    };
-  }
-
-  private isImageFile = (path: string): boolean => {
-    const extension = path.split('.').pop();
-    if (extension === undefined) {
-      return false;
-    }
-
-    return [
-      'bmp',
-      'gif',
-      'jpeg',
-      'jpg',
-      'png',
-      'raw',
-      'tif',
-      'tiff',
-    ].includes(extension.toLowerCase());
-  }
-
   private async findDuplicatedFromReadResult(list: (number | Buffer)[]): Promise<number[][]> {
     return new Timer(`Compared ${list.length} files in`).run(() => {
       const sameFileMap: Record<number, number[]> = {};
       const totalFiles = list.length;
-      let topIteration = 0;
+      let totalIteration = 0;
       while (list.length > 0) {
-        topIteration++;
-        if (topIteration % 1e3 === 0) {
-          console.log('processed', topIteration, '/', totalFiles, 'files');
+        totalIteration++;
+        if (totalIteration % 1e3 === 0) {
+          console.log('processed', totalIteration, '/', totalFiles, 'files');
         }
 
         const currentIndex = list.length - 1;
