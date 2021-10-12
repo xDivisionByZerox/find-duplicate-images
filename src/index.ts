@@ -2,11 +2,6 @@ import { ArgumentParser } from './models/argument-parser';
 import { DuplicateFileFinder } from './models/duplicate-file-finder';
 import { ResultHandler } from './models/result-handler';
 
-export interface IFileInfo {
-  name: string;
-  path: string;
-}
-
 (async () => {
   try {
     const config = ArgumentParser.parseFindArguments();
