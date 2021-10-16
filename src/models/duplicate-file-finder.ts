@@ -1,4 +1,4 @@
-import { FileReader } from './file-reader';
+import { FileReader, IBufferResult, ICrcResult } from './file-reader';
 import { Timer } from './timer';
 
 export interface IDuplicateFileFinderConstructor {
@@ -25,20 +25,17 @@ export class DuplicateFileFinder {
   }
 
   public async find(): Promise<string[][]> {
-    const { files, filePathes } = await this.$fileReader.read();
-    // for some reason the signatures are not compatible on this map
-    // @ts-ignore
-    const mapedResult = files.map((elem) => elem.result);
-    const sameFilesGroups = await this.findDuplicatedFromReadResult(mapedResult);
+    const { files } = await this.$fileReader.read();
+    const sameFilesGroups = await this.findDuplicatedFromReadResult(files);
 
-    const formatedResults: string[][] = sameFilesGroups.map((group) => group.map((elem) => filePathes[elem]!));
+    // const formatedResults: string[][] = sameFilesGroups.map((group) => group.map((elem) => filePathes[elem]!));
 
-    return formatedResults;
+    return sameFilesGroups;
   }
-  
-  private async findDuplicatedFromReadResult(list: (number | Buffer)[]): Promise<number[][]> {
+
+  private async findDuplicatedFromReadResult(list: IBufferResult[] | ICrcResult[]): Promise<string[][]> {
     return new Timer(`Compared ${list.length} files in`).run(() => {
-      const sameFileMap: Record<number, number[]> = {};
+      const sameFiles: string[][] = [];
       const totalFiles = list.length;
       let totalIteration = 0;
       while (list.length > 0) {
@@ -47,43 +44,37 @@ export class DuplicateFileFinder {
           console.log('processed', totalIteration, '/', totalFiles, 'files');
         }
 
-        const currentIndex = list.length - 1;
         const current = list.pop();
         if (current === undefined) {
           continue;
         }
 
-        let removes = 0;
+        const innerSameFiles: string[] = [];
         for (let compareIndex = 0; compareIndex <= list.length - 1; compareIndex++) {
           const compare = list[compareIndex];
           if (compare === undefined) {
             continue;
           }
 
-          if (!this.isSame(current, compare)) {
+          if (!this.isSame(current.result, compare.result)) {
             continue;
           }
 
-          const existingValue = sameFileMap[currentIndex];
-          const realListIndex = compareIndex + removes;
-          if (existingValue === undefined) {
-            sameFileMap[currentIndex] = [realListIndex];
-          } else {
-            existingValue.push(realListIndex);
-          }
+          innerSameFiles.push(compare.path);
+
 
           list.splice(compareIndex, 1);
           compareIndex--;
-          removes++;
+        }
+
+        if(innerSameFiles.length > 0) {
+          sameFiles.push([current.path, ...innerSameFiles]);
         }
       }
 
-      console.log('Found', Object.keys(sameFileMap).length, 'possible duplications');
+      console.log('Found', Object.keys(sameFiles).length, 'possible duplications');
 
-      return Object.entries(sameFileMap).map(([key, value]) => {
-        value.push(parseInt(key));
-        return value;
-      });
+      return sameFiles;
     });
   }
 
