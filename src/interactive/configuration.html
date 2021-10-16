@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuration - Duplicate Image Finder</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    label {
+      width: 100%;
+    }
+
+    .column {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1em;
+      padding: 1em;
+    }
+
+    .item {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .item.vertical {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+
+    .center {
+      text-align: center;
+      justify-self: center;
+    }
+
+    .submit-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 1em;
+
+      position: fixed;
+      bottom: 2em;
+      left: 0;
+      right: 0;
+    }
+
+    #submit {
+      width: 10em;
+      height: 2em;
+      border-radius: 15px;
+      font-size: 2em;
+    }
+  </style>
+</head>
+
+<body>
+  <form method="post" class="column">
+    <h1 class="center">Duplicate Image Finder</h1>
+
+    <div class="item vertical">
+      <label for="path">Paste the absolute directory path, you want to search for duplicate images:</label>
+      <input type="text" id="path" name="path" onchange="console.log(this)" />
+    </div>
+
+    <h2>Additional options</h2>
+
+    <div class="item">
+      <label for="recursive">Recursive search?</label>
+      <input type="checkbox" id="recursive" name="recursive" value="true">
+    </div>
+
+    <div class="submit-container">
+      <button type="submit" id="submit">Start searching</button>
+    </div>
+  </form>
+</body>
+
+</html>

@@ -5,7 +5,10 @@ import { ResultHandler } from './models/result-handler';
 (async () => {
   try {
     const config = ArgumentParser.parseFindArguments();
-    const results = await new DuplicateFileFinder().find();
+    const results = await new DuplicateFileFinder({
+      pathToCheck: config.pathToCheck,
+      recursive: config.recursive,
+    }).find();
     await new ResultHandler({
       htmlFileName: config.htmlFileName,
       jsFileName: config.jsFileName,

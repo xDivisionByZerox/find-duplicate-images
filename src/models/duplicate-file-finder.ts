@@ -1,4 +1,3 @@
-import { ArgumentParser } from './argument-parser';
 import { FileReader } from './file-reader';
 import { Timer } from './timer';
 
@@ -9,21 +8,24 @@ export interface IDuplicateFileFinderConstructor {
 
 export class DuplicateFileFinder {
 
-  private readonly $pathToCheck: string;
-  private readonly $recursive: boolean;
+  private readonly $fileReader: FileReader;
 
-  constructor() {
-    const config = ArgumentParser.parseFindArguments();
-    if (config.pathToCheck.length <= 0) {
+  constructor(params: {
+    pathToCheck: string;
+    recursive: boolean;
+  }) {
+    if (params.pathToCheck.length <= 0) {
       throw new Error('"pathToCheck" cannot be empty.');
     }
 
-    this.$pathToCheck = config.pathToCheck;
-    this.$recursive = config.recursive;
+    this.$fileReader = new FileReader({
+      directoyPath: params.pathToCheck,
+      recursive: params.recursive,
+    });
   }
 
   public async find(): Promise<string[][]> {
-    const { files, filePathes } = await new FileReader().read(this.$pathToCheck, this.$recursive);
+    const { files, filePathes } = await this.$fileReader.read();
     // for some reason the signatures are not compatible on this map
     // @ts-ignore
     const mapedResult = files.map((elem) => elem.result);
@@ -33,6 +35,7 @@ export class DuplicateFileFinder {
 
     return formatedResults;
   }
+  
   private async findDuplicatedFromReadResult(list: (number | Buffer)[]): Promise<number[][]> {
     return new Timer(`Compared ${list.length} files in`).run(() => {
       const sameFileMap: Record<number, number[]> = {};

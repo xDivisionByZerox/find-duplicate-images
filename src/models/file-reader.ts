@@ -17,26 +17,41 @@ export interface IBufferResult {
 export class FileReader {
 
   private readonly $crcHelper = new CRC();
+  private readonly $directoyPath: string;
+  private readonly $recursive: boolean;
 
-  async read(directoyPath: string, recursive?: boolean): Promise<{
+  constructor(params: {
+    directoyPath: string;
+    recursive?: boolean;
+  }) {
+    const {
+      directoyPath,
+      recursive = false,
+    } = params;
+
+    this.$directoyPath = directoyPath;
+    this.$recursive = recursive;
+  }
+
+  async read(): Promise<{
     files: IBufferResult[] | ICrcResult[],
     filePathes: string[],
   }> {
-    const { filePathList, totalBytes } = await this.findElements(directoyPath, recursive);
+    const { filePathList, totalBytes } = await this.findElements();
     const files = await this.readFromPathes(filePathList, totalBytes);
 
-    return { 
-      files, 
-      filePathes: filePathList, 
+    return {
+      files,
+      filePathes: filePathList,
     };
   }
 
-  private async findElements(directoyPath: string, recursive = false) {
-    const { filePathList, subDirectorys, totalBytes } = await this.readDirectory(directoyPath);
+  private async findElements() {
+    const { filePathList, subDirectorys, totalBytes } = await this.readDirectory(this.$directoyPath, this.$recursive);
     const totalMb = totalBytes / Math.pow(1024, 2);
 
     console.log('Found', filePathList.length, 'files');
-    const param = recursive ? 'Deeply searched' : 'Ignored';
+    const param = this.$recursive ? 'Deeply searched' : 'Ignored';
     console.log(param, subDirectorys.length, 'subdirectories.');
     console.log('Total size:', totalMb.toFixed(2), 'mB');
     console.log('Start searching for duplicates.');
