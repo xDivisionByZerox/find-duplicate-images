@@ -76,13 +76,14 @@ app.get('/results', async (request, response) => {
 
   initializeWebsocketNamespace(id, async (socket) => {
     console.log(item);
-    const results = await new DuplicateFileFinder({
+    await new DuplicateFileFinder({
       pathToCheck: item.path,
       recursive: item.recursive,
+      updateInterval: 1,
+      updateCallback: (params) => {
+        socket.emit('data', params);
+      }
     }).find();
-
-    console.log('emitting data');
-    socket.emit('data', results);
 
     delete workMap[id];
   });

@@ -8,6 +8,10 @@ import { ResultHandler } from './models/result-handler';
     const results = await new DuplicateFileFinder({
       pathToCheck: config.pathToCheck,
       recursive: config.recursive,
+      updateInterval: 1e3,
+      updateCallback: ({ completedFiles, totalFiles }) => {
+        console.log('Completed', completedFiles, '/', totalFiles);
+      },
     }).find();
     await new ResultHandler({
       htmlFileName: config.htmlFileName,

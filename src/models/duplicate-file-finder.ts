@@ -6,13 +6,25 @@ export interface IDuplicateFileFinderConstructor {
   recursive: boolean;
 }
 
+type UpdateCallback = (params: IUpdateCallbackParams) => void;
+
+interface IUpdateCallbackParams {
+  totalFiles: number;
+  completedFiles: number;
+  lastDuplicationGroup: string[];
+}
+
 export class DuplicateFileFinder {
 
   private readonly $fileReader: FileReader;
+  private readonly updateCallback: UpdateCallback;
+  private readonly updateInterval: number;
 
   constructor(params: {
     pathToCheck: string;
     recursive: boolean;
+    updateCallback: UpdateCallback;
+    updateInterval: number;
   }) {
     if (params.pathToCheck.length <= 0) {
       throw new Error('"pathToCheck" cannot be empty.');
@@ -22,6 +34,9 @@ export class DuplicateFileFinder {
       directoyPath: params.pathToCheck,
       recursive: params.recursive,
     });
+
+    this.updateCallback = params.updateCallback;
+    this.updateInterval = params.updateInterval;
   }
 
   public async find(): Promise<string[][]> {
@@ -31,6 +46,14 @@ export class DuplicateFileFinder {
     // const formatedResults: string[][] = sameFilesGroups.map((group) => group.map((elem) => filePathes[elem]!));
 
     return sameFilesGroups;
+  }
+
+  private update(params: IUpdateCallbackParams): void {
+    if(params.completedFiles % this.updateInterval !== 0) {
+      return;
+    }
+
+    this.updateCallback(params);
   }
 
   private async findDuplicatedFromReadResult(list: IBufferResult[] | ICrcResult[]): Promise<string[][]> {
@@ -49,7 +72,7 @@ export class DuplicateFileFinder {
           continue;
         }
 
-        const innerSameFiles: string[] = [];
+        const innerSameFiles: string[] = [current.path];
         for (let compareIndex = 0; compareIndex <= list.length - 1; compareIndex++) {
           const compare = list[compareIndex];
           if (compare === undefined) {
@@ -67,12 +90,18 @@ export class DuplicateFileFinder {
           compareIndex--;
         }
 
-        if(innerSameFiles.length > 0) {
-          sameFiles.push([current.path, ...innerSameFiles]);
+        if(innerSameFiles.length > 1) {
+          sameFiles.push(innerSameFiles);
         }
+
+        this.update({
+          completedFiles: totalIteration,
+          lastDuplicationGroup: innerSameFiles,
+          totalFiles,
+        });
       }
 
-      console.log('Found', Object.keys(sameFiles).length, 'possible duplications');
+      console.log('Found', sameFiles.length, 'possible duplications');
 
       return sameFiles;
     });
