@@ -57,6 +57,9 @@ function createPathColumn(path) {
 }
 
 function createImageColumn(path) {
+  // todo 
+  // this does not work on express server because we cant access local file directory
+  // find a workaround, ex. transmit buffer with file path
   const column = document.createElement('div');
   column.classList.add('col');
   const imageElement = document.createElement('img');
