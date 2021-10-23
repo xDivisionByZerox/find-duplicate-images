@@ -34,33 +34,36 @@ function initializeWebsocketNamespace(id: string, onConnect: (socket: Socket) =>
     });
 }
 
-app.use(json());
-app.use(urlencoded({
-  extended: true,
-}));
-app.use('/scripts', express.static(__dirname + '/scripts'))
+app.use(...[
+  express.static(__dirname + '/public'),
+  json(),
+  urlencoded({
+    extended: true,
+  }),
+]);
 
-app.get('/', (_, res) => {
-  res.sendFile(__dirname + '/configuration.html');
-});
+app
+  .route('/')
+  .get((_, res) => {
+    res.sendFile(__dirname + '/views/configuration.html');
+  })
+  .post((request, response) => {
+    const path = request.body.path;
+    let recursive = request.body.recursive;
+    if (!(statSync(path).isDirectory() && isAbsolute(path))) {
+      response.send('Path must be a absolute directoy');
 
-app.post('/', (request, response) => {
-  const path = request.body.path;
-  let recursive = request.body.recursive;
-  if (!(statSync(path).isDirectory() && isAbsolute(path))) {
-    response.send('Path must be a absolute directoy');
+      return;
+    }
 
-    return;
-  }
+    if (recursive === undefined) {
+      recursive = false;
+    }
 
-  if (recursive === undefined) {
-    recursive = false;
-  }
-
-  const workingId = v4();
-  workMap[workingId] = { path, recursive };
-  response.redirect(`/results?id=${workingId}`);
-});
+    const workingId = v4();
+    workMap[workingId] = { path, recursive };
+    response.redirect(`/results?id=${workingId}`);
+  });
 
 app.get('/results', async (request, response) => {
   const id = request.query.id;
@@ -88,7 +91,7 @@ app.get('/results', async (request, response) => {
     delete workMap[id];
   });
 
-  response.sendFile(__dirname + '/results/results.html');
+  response.sendFile(__dirname + '/views/results.html');
 });
 
 server.listen(3000, () => {
