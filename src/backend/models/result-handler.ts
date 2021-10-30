@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import fsPromise from 'fs/promises';
 import path from 'path';
-import { Util } from './util';
+import { getPath } from './path-normalizer';
 
 export interface IResultHandlerConstructor {
   outputDir: string;
@@ -17,12 +17,12 @@ export class ResultHandler {
   private readonly $jsOutputFilePath: string;
 
   private readonly $htmlTemplateFileName = 'index.template.html';
-  private readonly getHtmlTemplateFilePath = Util.getPath(path.dirname(process.argv[1]!), this.$htmlTemplateFileName);
+  private readonly getHtmlTemplateFilePath = getPath(path.dirname(process.argv[1]!), this.$htmlTemplateFileName);
 
   constructor(params: IResultHandlerConstructor) {
     this.$outputDir = params.outputDir;
-    this.$htmlOutputFilePath = Util.getPath(this.$outputDir, params.htmlFileName);
-    this.$jsOutputFilePath = Util.getPath(this.$outputDir, params.jsFileName);
+    this.$htmlOutputFilePath = getPath(this.$outputDir, params.htmlFileName);
+    this.$jsOutputFilePath = getPath(this.$outputDir, params.jsFileName);
   }
 
   async ouputResults(files: string[][]): Promise<void> {

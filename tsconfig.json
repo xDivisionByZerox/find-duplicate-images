@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
     "module": "CommonJS",
-    "moduleResolution": "Node",
+    "moduleResolution": "node",
     "noEmit": false,
     "noEmitHelpers": false,
     "noEmitOnError": true,

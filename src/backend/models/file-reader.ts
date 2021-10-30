@@ -2,7 +2,7 @@ import { statSync } from 'fs';
 import fsPromise from 'fs/promises';
 import { freemem } from 'os';
 import { CRC } from './crc';
-import { Util } from './util';
+import { getPath } from './path-normalizer';
 
 export interface ICrcResult {
   path: string;
@@ -54,14 +54,13 @@ export class FileReader {
     const param = this.$recursive ? 'Deeply searched' : 'Ignored';
     console.log(param, subDirectorys.length, 'subdirectories.');
     console.log('Total size:', totalMb.toFixed(2), 'mB');
-    console.log('Start searching for duplicates.');
 
     return { filePathList, totalBytes };
   }
 
   private async readDirectory(directoyPath: string, recursive = false) {
     const directoryOutput = await fsPromise.readdir(directoyPath);
-    const pathList = directoryOutput.map((fileName) => Util.getPath(directoyPath, fileName));
+    const pathList = directoryOutput.map((fileName) => getPath(directoyPath, fileName));
 
     const filePathList: string[] = [];
     const subDirectorys: string[] = [];

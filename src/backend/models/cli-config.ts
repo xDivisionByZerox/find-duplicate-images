@@ -1,6 +1,12 @@
-import { IDuplicateFileFinderConstructor } from './duplicate-file-finder';
+import { IDuplicateFileFinderConstructor } from './duplication-finder';
 import { IResultHandlerConstructor } from './result-handler';
-import { Util } from './util';
+
+function isObject<T extends Record<string, any>>(value: unknown): value is Partial<T> {
+  return (
+    typeof value === 'object'
+    && value !== undefined
+  );
+}
 
 export class FindConfig implements Required<IResultHandlerConstructor>, Required<IDuplicateFileFinderConstructor> {
 
@@ -19,7 +25,7 @@ export class FindConfig implements Required<IResultHandlerConstructor>, Required
   }
 
   static hasConfig = (value: unknown): value is FindConfig => (
-    Util.isObject<FindConfig>(value)
+    isObject<FindConfig>(value)
     && typeof value.htmlFileName === 'string'
     && typeof value.jsFileName === 'string'
     && typeof value.outputDir === 'string'
@@ -41,7 +47,7 @@ export class DeleteConfig {
   }
 
   static hasConfig = (value: unknown): value is DeleteConfig => (
-    Util.isObject<DeleteConfig>(value)
+    isObject<DeleteConfig>(value)
     && typeof value.path === 'string'
   )
 }

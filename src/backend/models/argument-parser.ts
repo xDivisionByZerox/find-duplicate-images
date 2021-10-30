@@ -1,7 +1,7 @@
 import commandLineArgs, { OptionDefinition } from 'command-line-args';
-import { DeleteConfig, FindConfig } from './config';
+import { DeleteConfig, FindConfig } from './cli-config';
+import { getPath } from './path-normalizer';
 import { IResultHandlerConstructor } from './result-handler';
-import { Util } from './util';
 
 interface FindConfigOptionDefinition extends OptionDefinition {
   name: keyof FindConfig;
@@ -16,7 +16,7 @@ export class ArgumentParser {
   private static defaultConfig: IResultHandlerConstructor = {
     htmlFileName: 'index.html',
     jsFileName: 'data.js',
-    outputDir: Util.getPath(__dirname, 'duplicate-files'),
+    outputDir: getPath(__dirname, 'duplicate-files'),
   };
 
   private static findDefinition: FindConfigOptionDefinition[] = [
