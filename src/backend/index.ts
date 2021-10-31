@@ -7,55 +7,37 @@ import { v4 } from 'uuid';
 import { DuplicationFinder } from './models/duplication-finder';
 import config from '../shared/config';
 import { EDuplicationProgressEventType } from '../shared/events';
-
-interface IWorkingInstance {
-  path: string;
-  recursive: boolean;
-}
+import cors from 'cors';
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server);
-const workMap: Record<string, IWorkingInstance> = {};
+const io = new Server(server,{
+  cors: {
+    origin: '*',
+  }
+});
 
 app.use(...[
   json(),
-  urlencoded({
-    extended: true,
-  }),
+  urlencoded({ extended: true }),
+  cors({ origin: '*' }),
 ]);
 
-app
-  .route('/')
-  .post((request, response) => {
-    const path = request.body.path;
-    let recursive = request.body.recursive;
-    if (!(statSync(path).isDirectory() && isAbsolute(path))) {
-      response.send('Path must be a absolute directoy');
+app.get('/', (_, res) => res.json({ message: 'hello from backend' }));
+app.post('/', (request, response) => {
+  const path = request.body.path ?? '';
+  const recursive = request.body.recursive ?? false;
+  if (!(statSync(path).isDirectory() && isAbsolute(path))) {
+    response.send('Path must be a absolute directoy');
 
-      return;
-    }
-
-    if (recursive === undefined) {
-      recursive = false;
-    }
-
-    const workingId = v4();
-    workMap[workingId] = { path, recursive };
-    response.redirect(`/results/${workingId}`);
-  });
-
-app.get('/results/:itemId', async (request, response) => {
-  const id = request.params.itemId;
-  const item = workMap[id];
-  if (item === undefined) {
-    throw new Error('invalid work item');
+    return;
   }
 
+  const id = v4();
   io.of(config.getSocketEnpoint(id)).on('connection', async (socket) => {
     const finder = new DuplicationFinder({
-      pathToCheck: item.path,
-      recursive: item.recursive,
+      pathToCheck: path,
+      recursive: recursive,
       updateInterval: 1,
     });
     finder.start$.subscribe((params) => {
@@ -72,11 +54,11 @@ app.get('/results/:itemId', async (request, response) => {
     });
 
     await finder.find();
-
-    delete workMap[id];
   });
+
+  response.json({ id });
 });
 
 server.listen(config.backendPort, () => {
-  console.log('listening on', config.backendDomain, ':', config.backendPort);
+  console.log('listening on', `${config.backendDomain}:${config.backendPort}`);
 });

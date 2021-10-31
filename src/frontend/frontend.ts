@@ -1,22 +1,22 @@
-import io from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import config from '../shared/config';
 import { DuplicationProgressFinishedEvent, DuplicationProgressFoundEvent, DuplicationProgressStartEvent, DuplicationProgressUpdateEvent, EDuplicationProgressEventType } from '../shared/events';
 
 const configSubmitButton = document.getElementById('submit-configuration');
-if(!(configSubmitButton instanceof HTMLButtonElement)) {
+if (!(configSubmitButton instanceof HTMLButtonElement)) {
   throw new Error('could not find configuration submit button element');
 }
 
 configSubmitButton.onclick = submitConfiguration;
 
-async function submitConfiguration() {
+async function submitConfiguration(): Promise<void> {
   const pathInput = document.getElementById('path-input');
   if (!(pathInput instanceof HTMLInputElement)) {
     return;
   }
   const path = pathInput.value;
 
-  const recursiveInput = document.getElementById('path-input');
+  const recursiveInput = document.getElementById('recursive-input');
   if (!(recursiveInput instanceof HTMLInputElement)) {
     return;
   }
@@ -27,18 +27,35 @@ async function submitConfiguration() {
   const url = `${config.backendDomain}:${config.backendPort}`;
   const response = await fetch(url, {
     body: JSON.stringify({ recursive, path }),
-    method: 'POST'
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
   });
-  const json = response.json();
-  console.log(json);
+  const { id } = await response.json();
+  if (typeof id !== 'string') {
+    throw new Error('got no id from backend');
+  }
+
+  initializeResultListener(id)
 }
 
-export function initializeResultListener(id: string) {
+function initializeResultListener(id: string): void {
+  const configContainer = document.getElementById('configuration-container');
+  if (configContainer) {
+    configContainer.style.display = 'none';
+  }
+
+  const readCountContainerElement = document.getElementById('read-count-container');
+  if (!readCountContainerElement) {
+    throw new Error('no read count container element');
+  }
+
   let totalResultNumber = 0;
-  const socket = io(`${config.backendDomain}:${config.backendPort}${config.getSocketEnpoint(id)}`, { query: { id } });
+  const socket: Socket = io(`${config.backendDomain}:${config.backendPort}${config.getSocketEnpoint(id)}`);
   socket.on(EDuplicationProgressEventType.FOUND.toString(), (ev: DuplicationProgressFoundEvent) => {
-    console.log('got data', ev);
-    const group = ev.group;
+    const { group } = ev;
     if (group.length > 1) {
       totalResultNumber++;
       createGroupContainer(totalResultNumber, group);
@@ -46,20 +63,23 @@ export function initializeResultListener(id: string) {
   });
 
   socket.on(EDuplicationProgressEventType.START.toString(), (ev: DuplicationProgressStartEvent) => {
-    console.log('started', ev.step)
+    const stepText = ev.step === 'compare' ? 'comparing' : 'reading'
+    readCountContainerElement.innerText = `Stared ${stepText} files.`;
+    readCountContainerElement.style.display = 'block';
   });
 
   socket.on(EDuplicationProgressEventType.UPDATE.toString(), (ev: DuplicationProgressUpdateEvent) => {
-    console.log('got update', ev);
+    const { completed, total } = ev;
+    readCountContainerElement.innerText = `Read ${completed} / ${total} files.`;
   });
 
   socket.on(EDuplicationProgressEventType.FINISHED.toString(), (ev: DuplicationProgressFinishedEvent) => {
-    console.log('got finish', ev);
+    const { completed, total, timeTaken } = ev;
+    readCountContainerElement.innerText = `Read ${completed} / ${total} files in ${timeTaken}ms.`;
   });
 
-  const resultContainer = document.getElementById('result-container');
-
   function createGroupContainer(resultNumber: number, group: string[]) {
+    const resultContainer = document.getElementById('result-container');
     if (!resultContainer) {
       throw new Error('can not find result container');
     }
