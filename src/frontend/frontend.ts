@@ -22,8 +22,6 @@ async function submitConfiguration(): Promise<void> {
   }
   const recursive = recursiveInput.checked;
 
-  console.log({ path, recursive });
-
   const url = `${config.backendDomain}:${config.backendPort}`;
   const response = await fetch(url, {
     body: JSON.stringify({ recursive, path }),

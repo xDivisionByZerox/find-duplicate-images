@@ -1,8 +1,8 @@
 import { statSync } from 'fs';
 import fsPromise from 'fs/promises';
 import { freemem } from 'os';
+import path from 'path';
 import { CRC } from './crc';
-import { getPath } from './path-normalizer';
 
 export interface ICrcResult {
   path: string;
@@ -37,7 +37,7 @@ export class FileReader {
     files: IBufferResult[] | ICrcResult[],
     filePathes: string[],
   }> {
-    const { filePathList, totalBytes } = await this.findElements();
+    const { filePathList, totalBytes } = await this.readDirectory(this.$directoyPath, this.$recursive);
     const files = await this.readFromPathes(filePathList, totalBytes);
 
     return {
@@ -46,21 +46,13 @@ export class FileReader {
     };
   }
 
-  private async findElements() {
-    const { filePathList, subDirectorys, totalBytes } = await this.readDirectory(this.$directoyPath, this.$recursive);
-    const totalMb = totalBytes / Math.pow(1024, 2);
-
-    console.log('Found', filePathList.length, 'files');
-    const param = this.$recursive ? 'Deeply searched' : 'Ignored';
-    console.log(param, subDirectorys.length, 'subdirectories.');
-    console.log('Total size:', totalMb.toFixed(2), 'mB');
-
-    return { filePathList, totalBytes };
+  private getPath(...pathes: string[]): string {
+    return path.normalize(path.join(...pathes));
   }
 
   private async readDirectory(directoyPath: string, recursive = false) {
     const directoryOutput = await fsPromise.readdir(directoyPath);
-    const pathList = directoryOutput.map((fileName) => getPath(directoyPath, fileName));
+    const pathList = directoryOutput.map((fileName) => this.getPath(directoyPath, fileName));
 
     const filePathList: string[] = [];
     const subDirectorys: string[] = [];
@@ -97,10 +89,6 @@ export class FileReader {
       return this.asBufferMap(filePaths);
     }
 
-    console.log('Total file size will exceed available.');
-    console.log('Will use file hashing algorithm. This will run much slower.');
-    console.log('To speed up this process, search in directorys with not that many files at the same time.');
-
     return this.asCrc32Map(filePaths);
   }
 
@@ -129,8 +117,6 @@ export class FileReader {
 
       const settled = await Promise.allSettled(promises);
       finished += settled.filter((elem) => elem.status === 'fulfilled').length;
-
-      console.log('Processed', finished, '/', filePaths.length, 'images');
     }
 
     return mapedList;
