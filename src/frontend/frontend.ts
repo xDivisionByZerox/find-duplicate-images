@@ -74,6 +74,7 @@ function initializeResultListener(id: string): void {
   socket.on(EDuplicationProgressEventType.FINISHED.toString(), (ev: DuplicationProgressFinishedEvent) => {
     const { completed, total, timeTaken } = ev;
     readCountContainerElement.innerText = `Read ${completed} / ${total} files in ${timeTaken}ms.`;
+    socket.close();
   });
 
   function createGroupContainer(resultNumber: number, group: string[]) {

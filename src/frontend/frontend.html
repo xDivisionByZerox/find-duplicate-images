@@ -15,7 +15,10 @@
       <h1 class="center">Duplicate Image Finder</h1>
 
       <div class="item vertical">
-        <label for="path-input">Paste the absolute directory path, you want to search for duplicate images:</label>
+        <label for="path-input">
+          Path
+          <span class="tooltip">Input the absolute directory path you want to search for duplicate images</span>
+        </label>
         <input type="text" id="path-input" name="path" />
       </div>
 
@@ -33,9 +36,9 @@
   </div>
 
   <div id="result-container">
-    <div id="read-count-container" style="display: none;"></div>
+    <div id="read-count-container"></div>
   </div>
-  
+
   <script src="frontend.js"></script>
 </body>
 
