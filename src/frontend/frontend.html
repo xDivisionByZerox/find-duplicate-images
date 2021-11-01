@@ -10,34 +10,41 @@
 </head>
 
 <body>
-  <div id="configuration-container">
-    <section class="column">
-      <h1 class="center">Duplicate Image Finder</h1>
+  <header>
+    <img src="./images/logo.svg" width="48" height="48" alt="logo">
+    <h1 class="center">Duplicate Image Finder</h1>
+  </header>
 
-      <div class="item vertical">
-        <label for="path-input">
-          Path
-          <span class="tooltip">Input the absolute directory path you want to search for duplicate images</span>
-        </label>
-        <input type="text" id="path-input" name="path" />
-      </div>
+  <main>
 
-      <h2>Additional options</h2>
+    <div id="configuration-container">
+      <section class="column">
+        <div class="item vertical">
+          <label for="path-input">
+            Path
+            <span class="tooltip">Input the absolute directory path you want to search for duplicate images</span>
+          </label>
+          <input type="text" id="path-input" name="path" />
+        </div>
 
-      <div class="item">
-        <label for="recursive-input">Recursive search?</label>
-        <input type="checkbox" id="recursive-input" name="recursive" value="true">
-      </div>
+        <h2>Additional options</h2>
 
-      <div class="submit-container">
-        <button id="submit-configuration">Start searching</button>
-      </div>
-    </section>
-  </div>
+        <div class="item">
+          <label for="recursive-input">Recursive search?</label>
+          <input type="checkbox" id="recursive-input" name="recursive" value="true">
+        </div>
 
-  <div id="result-container">
-    <div id="read-count-container"></div>
-  </div>
+        <div class="submit-container">
+          <button id="submit-configuration">Start searching</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="result-container">
+      <div id="read-count-container"></div>
+    </div>
+
+  </main>
 
   <script src="frontend.js"></script>
 </body>

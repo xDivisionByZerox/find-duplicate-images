@@ -5,6 +5,31 @@ body {
 
   --primary: rgb(74, 71, 243);
   --primary-contrast: rgb(255, 255, 255);
+  --page-size: 600px;
+}
+
+header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+button {
+  background-color: var(--primary);
+  color: var(--primary-contrast);
+  border-radius: 15px;
+  padding: 1em;
+}
+
+h1,
+h2 {
+  text-align: center;
+  color: var(--primary);
+}
+
+main {
+  max-width: var(--page-size);
+  margin: auto;
 }
 
 #configuration-container,
@@ -13,17 +38,6 @@ body {
   grid-template-columns: 1fr;
   gap: 1em;
   padding: 1em;
-}
-
-#configuration-container {
-  max-width: 400px;
-  margin: auto;
-}
-
-#configuration-container h1,
-#configuration-container h2 {
-  text-align: center;
-  color: var(--primary);
 }
 
 #configuration-container .item {
@@ -104,13 +118,8 @@ body {
   right: 0;
 }
 
-#configuration-container #submit-configuration {
-  background-color: var(--primary);
-  color: var(--primary-contrast);
-  border-radius: 15px;
+#configuration-container button {
   font-size: 2em;
-  height: 2em;
-  width: 10em;
 }
 
 #result-container {
@@ -131,31 +140,17 @@ body {
 
 #result-container .row {
   width: 100%;
-  display: flex;
-  flex-flow: row;
-  justify-content: space-between;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr;
+  gap: 1em;
+  place-items: center;
   max-height: var(--max-cell-height);
   overflow: hidden;
 }
 
 #result-container .col {
-  width: 25%;
-  height: 100%;
-  display: flex;
-  justify-content: start;
-  align-items: center;
-  padding: 1em;
-  word-break: break-all;
-  max-height: var(--max-cell-height);
-}
-
-#result-container .col:nth-child(2) {
-  justify-content: center;
-}
-
-#result-container .col:nth-child(3) {
-  justify-content: end;
+  width: 100%;
+  word-break: break-word;
 }
 
 #result-container img {

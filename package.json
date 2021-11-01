@@ -8,8 +8,7 @@
     "build:shared": "tsc --project src",
     "build:backend": "tsc --project src/backend",
     "build:frontend": "webpack --config src/frontend/webpack.config.js",
-    "start": "node dist/main.js",
-    "serve": "npm run build && npm run start"
+    "start": "node dist/main.js"
   },
   "repository": {
     "type": "git",

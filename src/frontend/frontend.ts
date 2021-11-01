@@ -8,6 +8,7 @@ if (!(configSubmitButton instanceof HTMLButtonElement)) {
 }
 
 configSubmitButton.onclick = submitConfiguration;
+const serverUrl = `${config.backendDomain}:${config.backendPort}`;
 
 async function submitConfiguration(): Promise<void> {
   const pathInput = document.getElementById('path-input');
@@ -22,21 +23,23 @@ async function submitConfiguration(): Promise<void> {
   }
   const recursive = recursiveInput.checked;
 
-  const url = `${config.backendDomain}:${config.backendPort}`;
-  const response = await fetch(url, {
-    body: JSON.stringify({ recursive, path }),
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
-  });
-  const { id } = await response.json();
+  const { id } = await postRequest(serverUrl, { recursive, path });
   if (typeof id !== 'string') {
     throw new Error('got no id from backend');
   }
 
   initializeResultListener(id)
+}
+
+async function postRequest(url: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return fetch(url, {
+    body: JSON.stringify(body),
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+  }).then((response) => response.json());
 }
 
 function initializeResultListener(id: string): void {
@@ -83,7 +86,7 @@ function initializeResultListener(id: string): void {
       throw new Error('can not find result container');
     }
 
-    const groupContainer = document.createElement('div');
+    const groupContainer = document.createElement('section');
     groupContainer.classList.add('group-container');
 
     const groupHeaderRow = document.createElement('h3');
@@ -92,59 +95,76 @@ function initializeResultListener(id: string): void {
     groupContainer.appendChild(groupHeaderRow);
 
     for (const path of group) {
-      const tableRow = document.createElement('div');
-      tableRow.classList.add('row')
+      const row = document.createElement('section');
+      row.classList.add('row')
 
-      tableRow.appendChild(createNameColumn(path));
-      tableRow.appendChild(createPathColumn(path));
-      tableRow.appendChild(createImageColumn(path));
-      tableRow.appendChild(createSelectColumn());
+      row.appendChild(createNameColumn(path));
+      row.appendChild(createImageColumn(path));
+      row.appendChild(createDeleteButtonColumn(path));
 
-      groupContainer.appendChild(tableRow);
+      groupContainer.appendChild(row);
     }
 
     resultContainer.appendChild(groupContainer);
   }
 
   function createNameColumn(path: string) {
-    const tableColName = document.createElement('div');
+    const tableColName = document.createElement('section');
     tableColName.classList.add('col');
     tableColName.innerText = path.replace(/\\/g, '/').split('/').pop() ?? '';
 
     return tableColName;
   }
 
-  function createPathColumn(path: string) {
-    const tableColPath = document.createElement('div');
-    tableColPath.classList.add('col');
+  function createImageColumn(path: string) {
+    const column = document.createElement('section');
+    column.classList.add('col');
+
     const anchor = document.createElement('a');
     anchor.href = path;
-    anchor.text = path;
-    tableColPath.appendChild(anchor);
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
 
-    return tableColPath;
-  }
-
-  function createImageColumn(path: string) {
-    // todo 
-    // this does not work on express server because we cant access local file directory
-    // find a workaround, ex. transmit buffer with file path
-    const column = document.createElement('div');
-    column.classList.add('col');
     const imageElement = document.createElement('img');
     imageElement.src = path;
-    imageElement.alt = 'Preview of photo with path ' + path;
-    column.appendChild(imageElement);
+    imageElement.alt = `Preview of photo with path ${path}`;
+
+    anchor.appendChild(imageElement);
+    column.appendChild(anchor);
 
     return column;
   }
 
-  function createSelectColumn() {
-    const column = document.createElement('div');
+  function createDeleteButtonColumn(path: string) {
+    const column = document.createElement('section');
     column.classList.add('col');
-    const inputElement = document.createElement('input');
-    inputElement.type = 'checkbox';
-    column.appendChild(inputElement);
+    const deleteButton = document.createElement('button');
+    deleteButton.innerText = 'delete';
+    deleteButton.onclick = async () => {
+      const wantDelete = confirm(`Deleting this image will be permanent and can not be undone. Are you sure you really want to delete ${path}`);
+      if(!wantDelete) {
+        return;    
+      }
+
+      await postRequest(`${serverUrl}/delete`, { path });    
+
+      const row = column.parentElement;
+      if(!row) {
+        return;
+      }
+
+      const group = row.parentElement;
+      if(!group) {
+        return;
+      }
+
+      row.remove();
+      const remainingElements = Array.from(group.children).filter((elem) => elem instanceof HTMLDivElement);
+      if(remainingElements.length <= 1) {
+        group.remove();
+      }
+    };
+    column.appendChild(deleteButton);
 
     return column;
   }

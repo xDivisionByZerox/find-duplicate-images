@@ -1,5 +1,5 @@
 import express, { json, urlencoded } from 'express';
-import { statSync } from 'fs';
+import { fstat, statSync, unlinkSync } from 'fs';
 import { createServer } from 'http';
 import { isAbsolute } from 'path';
 import { Server } from 'socket.io';
@@ -11,7 +11,7 @@ import cors from 'cors';
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server,{
+const io = new Server(server, {
   cors: {
     origin: '*',
   }
@@ -23,7 +23,7 @@ app.use(...[
   cors({ origin: '*' }),
 ]);
 
-app.get('/', (_, res) => res.json({ message: 'hello from backend' }));
+app.get('/', (_, response) => response.json({ message: 'hello from backend' }));
 app.post('/', (request, response) => {
   const path = request.body.path ?? '';
   const recursive = request.body.recursive ?? false;
@@ -57,6 +57,17 @@ app.post('/', (request, response) => {
   });
 
   response.json({ id });
+});
+
+app.post('/delete', (request, response) => {
+  const { path } = request.body;
+  if (typeof path !== 'string' && !isAbsolute(path)) {
+    throw new Error('invalid path argument');
+  }
+
+  unlinkSync(path);
+
+  response.status(200).json({ message: 'success' });
 });
 
 server.listen(config.backendPort, () => {
