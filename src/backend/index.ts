@@ -1,13 +1,14 @@
+import cors from 'cors';
 import express, { json, urlencoded } from 'express';
-import { fstat, statSync, unlinkSync } from 'fs';
+import { statSync, unlinkSync } from 'fs';
 import { createServer } from 'http';
 import { isAbsolute } from 'path';
 import { Server } from 'socket.io';
 import { v4 } from 'uuid';
-import { DuplicationFinder } from './models/duplication-finder';
 import config from '../shared/config';
-import { EDuplicationProgressEventType } from '../shared/events';
-import cors from 'cors';
+import { DuplicationFinder } from './models/duplication-finder';
+import { ECompareProgressEventType } from '../shared/events/compare.events';
+import { getEventName } from '../shared/events/names.events';
 
 const app = express();
 const server = createServer(app);
@@ -40,18 +41,11 @@ app.post('/', (request, response) => {
       recursive: recursive,
       updateInterval: 1,
     });
-    finder.start$.subscribe((params) => {
-      socket.emit(EDuplicationProgressEventType.START.toString(), params);
-    });
-    finder.found$.subscribe((params) => {
-      socket.emit(EDuplicationProgressEventType.FOUND.toString(), params);
-    });
-    finder.update$.subscribe((params) => {
-      socket.emit(EDuplicationProgressEventType.UPDATE.toString(), params);
-    });
-    finder.finish$.subscribe((params) => {
-      socket.emit(EDuplicationProgressEventType.FINISHED.toString(), params);
-    });
+    const { finish$, start$, update$, found$ } = finder.events;
+    start$.subscribe((p) => socket.emit(getEventName('compare', ECompareProgressEventType.START), p));
+    found$.subscribe((p) => socket.emit(getEventName('compare', ECompareProgressEventType.FOUND), p));
+    update$.subscribe((p) => socket.emit(getEventName('compare', ECompareProgressEventType.UPDATE), p));
+    finish$.subscribe((p) => socket.emit(getEventName('compare', ECompareProgressEventType.FINISH), p));
 
     await finder.find();
   });
