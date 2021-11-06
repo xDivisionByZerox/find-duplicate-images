@@ -1,4 +1,4 @@
-import { statSync } from 'fs';
+import { Stats, statSync } from 'fs';
 import fsPromise from 'fs/promises';
 import { freemem } from 'os';
 import { isAbsolute, normalize, join } from 'path';
@@ -16,7 +16,12 @@ export interface IBufferResult {
   result: Buffer;
 }
 
-export class FileReader {
+type StatsWithPath = {
+  stat: Stats;
+  path: string;
+};
+
+export class FileFinder {
 
   private readonly $crcHelper = new CRC();
   private readonly $directoyPath: string;
@@ -47,34 +52,38 @@ export class FileReader {
   }
 
   async read(): Promise<IBufferResult[] | ICrcResult[]> {
-    const startTime = Date.now();
-    this.$eventEmitter.emitStart(new ReadStartEvent());
-
+    const startEvent = this.$eventEmitter.emitStart(new ReadStartEvent());
     const { filePathList, totalBytes } = await this.readDirectory(this.$directoyPath, this.$recursive);
-    const files = await this.readFromPathes(filePathList, totalBytes);
-
     this.$eventEmitter.emitFinish(new ReadFinishEvent({
-      startTime,
-      completed: files.length,
-      total: files.length,
+      startTime: startEvent.startTime,
+      completed: filePathList.length,
+      total: filePathList.length,
     }));
+
+    const files = await this.readFromPathes(filePathList, totalBytes);
 
     return files;
   }
 
-  private getPath(...pathes: string[]): string {
-    return normalize(join(...pathes));
-  }
-
   private async readDirectory(directoyPath: string, recursive = false) {
     const directoryOutput = await fsPromise.readdir(directoyPath);
-    const pathList = directoryOutput.map((fileName) => this.getPath(directoyPath, fileName));
+    const statsPromises = directoryOutput.map(async (fileName) => {
+      const fullPath = join(directoyPath, fileName);
+      const normalizedFullPath = normalize(fullPath);
+
+      return fsPromise.stat(normalizedFullPath).then((result): StatsWithPath => ({
+        stat: result,
+        path: normalizedFullPath,
+      }));
+    });
+    const statsSettled = await Promise.allSettled(statsPromises);
+    const statsFullFilled = statsSettled.filter((elem): elem is PromiseFulfilledResult<StatsWithPath> => elem.status === 'fulfilled');
+    const stats = statsFullFilled.map((elem) => elem.value);
 
     const filePathList: string[] = [];
     const subDirectorys: string[] = [];
     let totalBytes = 0;
-    for (const path of pathList) {
-      const stat = statSync(path);
+    for (const { stat, path } of stats) {
       if (stat.isFile() && this.isImageFile(path)) {
         filePathList.push(path);
         totalBytes = totalBytes + stat.size;
@@ -92,11 +101,12 @@ export class FileReader {
     }
 
     if (recursive) {
-      for (const subDir of subDirectorys) {
+      const subDirectoryPromises = subDirectorys.map(async (subDir) => {
         const result = await this.readDirectory(subDir, recursive);
         filePathList.push(...result.filePathList);
         totalBytes = totalBytes + result.totalBytes;
-      }
+      });
+      await Promise.allSettled(subDirectoryPromises);
     }
 
     return {

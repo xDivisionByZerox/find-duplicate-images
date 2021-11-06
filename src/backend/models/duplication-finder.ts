@@ -4,7 +4,7 @@ import { ProgressFinishEvent, ProgressFoundEvent, ProgressStartEvent, ProgressUp
 import { ReadStartEvent } from '../../shared/events/read.events';
 import { CompareFinishEvent, CompareFoundEvent, CompareStartEvent, CompareUpdateEvent } from '../../shared/events/compare.events';
 import { EventEmitter, EventMap } from './event-emitter';
-import { FileReader, IBufferResult, ICrcResult } from './file-reader';
+import { FileFinder, IBufferResult, ICrcResult } from './file-finder';
 
 export interface IDuplicateFileFinderConstructor {
   pathToCheck: string;

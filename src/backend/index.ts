@@ -9,7 +9,7 @@ import config from '../shared/config';
 import { DuplicationFinder } from './models/duplication-finder';
 import { ECompareProgressEventType } from '../shared/events/compare.events';
 import { getEventName } from '../shared/events/names.events';
-import { FileReader } from './models/file-reader';
+import { FileFinder } from './models/file-finder';
 import { EReadProgressEventType } from '../shared/events/read.events';
 
 const app = express();
@@ -41,7 +41,7 @@ app.post('/', (request, response) => {
     const buildReadEventEmitter = (type: EReadProgressEventType) => {
       return <T>(params: T) => socket.emit(getEventName('read', type), params);
     };
-    const fileReader = new FileReader({
+    const fileReader = new FileFinder({
       directoyPath: path,
       recursive,
       updateInterval: 1,
