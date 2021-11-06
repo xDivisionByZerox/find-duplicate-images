@@ -18,7 +18,7 @@ export class CRC {
     return crcTable;
   }
 
-  generate(str: string) {
+  generate(str: string): number {
     let crc = 0 ^ (-1);
 
     for (let i = 0; i < str.length; i++) {

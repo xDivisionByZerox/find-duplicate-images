@@ -51,18 +51,16 @@ export class FileFinder {
     this.events = this.$eventEmitter.getEventMap();
   }
 
-  async read(): Promise<IBufferResult[] | ICrcResult[]> {
+  async find(): Promise<string[]> {
     const startEvent = this.$eventEmitter.emitStart(new ReadStartEvent());
-    const { filePathList, totalBytes } = await this.readDirectory(this.$directoyPath, this.$recursive);
+    const { filePathList } = await this.readDirectory(this.$directoyPath, this.$recursive);
     this.$eventEmitter.emitFinish(new ReadFinishEvent({
       startTime: startEvent.startTime,
       completed: filePathList.length,
       total: filePathList.length,
     }));
 
-    const files = await this.readFromPathes(filePathList, totalBytes);
-
-    return files;
+    return filePathList;
   }
 
   private async readDirectory(directoyPath: string, recursive = false) {

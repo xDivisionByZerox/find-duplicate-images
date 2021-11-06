@@ -5,6 +5,9 @@ import { ReadStartEvent } from '../../shared/events/read.events';
 import { CompareFinishEvent, CompareFoundEvent, CompareStartEvent, CompareUpdateEvent } from '../../shared/events/compare.events';
 import { EventEmitter, EventMap } from './event-emitter';
 import { FileFinder, IBufferResult, ICrcResult } from './file-finder';
+import { readFile, stat } from 'fs/promises';
+import { createHash } from 'crypto';
+import { exists } from 'fs';
 
 export interface IDuplicateFileFinderConstructor {
   pathToCheck: string;
@@ -23,12 +26,11 @@ export class DuplicationFinder {
     this.events = this.$eventEmitter.getEventMap();
   }
 
-  async find(files: IBufferResult[] | ICrcResult[]): Promise<string[][]> {
-    const startEvent = this.$eventEmitter.emitStart(new CompareStartEvent());
-
+  async find(files: string[]): Promise<string[][]> {
     const total = files.length;
-    const sameFilesGroups = await this.compareFromReadResult(files);
 
+    const startEvent = this.$eventEmitter.emitStart(new CompareStartEvent());
+    const sameFilesGroups = await this.compareFromReadResult(files);
     this.$eventEmitter.emitFinish(new CompareFinishEvent({
       startTime: startEvent.startTime,
       results: sameFilesGroups,
@@ -40,63 +42,40 @@ export class DuplicationFinder {
     return sameFilesGroups;
   }
 
-  private async compareFromReadResult(list: IBufferResult[] | ICrcResult[]): Promise<string[][]> {
-    const sameFiles: string[][] = [];
-    const totalFiles = list.length;
-    let totalIteration = 0;
-    while (list.length > 0) {
-      totalIteration++;
+  private async compareFromReadResult(filePathes: string[]): Promise<string[][]> {
+    const hashMap = new Map<string, string>();
+    const bufferPromises = filePathes.map(async (path) => {
+      const buffer = await readFile(path);
+      const hash = createHash('sha256').update(buffer).digest();
+      const hashString = hash.toString('base64');
+      hashMap.set(path, hashString);
+    });
+    await Promise.all(bufferPromises);
 
-      const current = list.pop();
-      if (current === undefined) {
-        continue;
-      }
+    const duplicateMap = new Map<string, string[]>();
+    let interations = 0;
+    for (const [path, hash] of hashMap.entries()) {
+      interations++;
 
-      const currentIterationSameFiles: string[] = [current.path];
-      for (let compareIndex = 0; compareIndex <= list.length - 1; compareIndex++) {
-        const compare = list[compareIndex];
-        if (compare === undefined) {
-          continue;
-        }
-
-        if (!this.isSame(current.result, compare.result)) {
-          continue;
-        }
-
-        currentIterationSameFiles.push(compare.path);
-        list.splice(compareIndex, 1);
-        compareIndex--;
-      }
-
-      if (currentIterationSameFiles.length > 1) {
-        sameFiles.push(currentIterationSameFiles);
+      const existing = duplicateMap.get(hash);
+      if (existing) {
+        existing.push(path);
         this.$eventEmitter.emitFound(new CompareFoundEvent({
-          group: currentIterationSameFiles
+          group: existing,
         }));
+      } else {
+        duplicateMap.set(hash, [path]);
       }
 
       this.$eventEmitter.emitUpdate(new CompareUpdateEvent({
-        completed: totalIteration,
-        total: totalFiles,
+        completed: interations,
+        total: filePathes.length,
       }));
     }
 
-    return sameFiles;
-  }
-
-  private isSame(value1: number | Buffer, value2: number | Buffer): boolean {
-    return (
-      (
-        value1 instanceof Buffer
-        && value2 instanceof Buffer
-        && value1.equals(value2)
-      )
-      || (
-        typeof value1 === 'number'
-        && typeof value2 === 'number'
-        && value1 === value2
-      )
-    )
+    const duplicates = Array.from(duplicateMap.values()).filter((elem) => elem.length > 1);
+    
+    return duplicates;
   }
 
 }

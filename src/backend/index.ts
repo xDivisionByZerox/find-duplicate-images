@@ -49,7 +49,7 @@ app.post('/', (request, response) => {
     fileReader.events.found$.subscribe(buildReadEventEmitter(EReadProgressEventType.FOUND));
     fileReader.events.start$.subscribe(buildReadEventEmitter(EReadProgressEventType.START));
     fileReader.events.finish$.subscribe(buildReadEventEmitter(EReadProgressEventType.FINISH));
-    const files = await fileReader.read();
+    const files = await fileReader.find();
 
     const buildCompareEventEmitter = (type: ECompareProgressEventType) => {
       return <T>(params: T) => socket.emit(getEventName('compare', type), params);
