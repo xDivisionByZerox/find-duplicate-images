@@ -1,6 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import config from '../shared/config';
-import { DuplicationProgressFinishedEvent, DuplicationProgressFoundEvent, DuplicationProgressStartEvent, DuplicationProgressUpdateEvent, EDuplicationProgressEventType } from '../shared/events';
+import { getEventName } from '../shared/events/names.events';
+import { CompareFinishEvent, CompareFoundEvent, CompareUpdateEvent, ECompareProgressEventType } from '../shared/events/compare.events';
+import { EReadFoundType, EReadProgressEventType, ReadFinishEvent, ReadFoundEvent } from '../shared/events/read.events';
 
 const configSubmitButton = document.getElementById('submit-configuration');
 if (!(configSubmitButton instanceof HTMLButtonElement)) {
@@ -48,37 +50,74 @@ function initializeResultListener(id: string): void {
     configContainer.style.display = 'none';
   }
 
-  const readCountContainerElement = document.getElementById('read-count-container');
-  if (!readCountContainerElement) {
-    throw new Error('no read count container element');
+  const resultContainerElement = document.getElementById('result-container');
+  if (!resultContainerElement) {
+    throw new Error('no resultContainerElement');
   }
 
-  let totalResultNumber = 0;
   const socket: Socket = io(`${config.backendDomain}:${config.backendPort}${config.getSocketEnpoint(id)}`);
-  socket.on(EDuplicationProgressEventType.FOUND.toString(), (ev: DuplicationProgressFoundEvent) => {
-    const { group } = ev;
-    if (group.length > 1) {
-      totalResultNumber++;
-      createGroupContainer(totalResultNumber, group);
-    }
-  });
 
-  socket.on(EDuplicationProgressEventType.START.toString(), (ev: DuplicationProgressStartEvent) => {
-    const stepText = ev.step === 'compare' ? 'comparing' : 'reading'
-    readCountContainerElement.innerText = `Stared ${stepText} files.`;
-    readCountContainerElement.style.display = 'block';
-  });
+  (() => {
+    // setupReadListener
+    const readResultContainerElement = document.createElement('div');
+    readResultContainerElement.id = 'read-result-container';
+    resultContainerElement.appendChild(readResultContainerElement);
 
-  socket.on(EDuplicationProgressEventType.UPDATE.toString(), (ev: DuplicationProgressUpdateEvent) => {
-    const { completed, total } = ev;
-    readCountContainerElement.innerText = `Read ${completed} / ${total} files.`;
-  });
+    socket.on(getEventName('read', EReadProgressEventType.START), () => {
+      readResultContainerElement.innerText = `Stared reading files.`;
+    });
 
-  socket.on(EDuplicationProgressEventType.FINISHED.toString(), (ev: DuplicationProgressFinishedEvent) => {
-    const { completed, total, timeTaken } = ev;
-    readCountContainerElement.innerText = `Read ${completed} / ${total} files in ${timeTaken}ms.`;
-    socket.close();
-  });
+    let files = 0;
+    let subdirectories = 0;
+    const getUpdateText = () => `Found ${files} files and ${subdirectories} subdirectories.`;
+    socket.on(getEventName('read', EReadProgressEventType.FOUND), (ev: ReadFoundEvent) => {
+      const { type } = ev;
+      if (type === EReadFoundType.FILE) {
+        files++;
+      } else if (type === EReadFoundType.SUBDIRECTORY) {
+        subdirectories++;
+      }
+
+      readResultContainerElement.innerText = getUpdateText();
+    });
+
+    socket.on(getEventName('read', EReadProgressEventType.FINISH), (ev: ReadFinishEvent) => {
+      const { timeTaken } = ev;
+      readResultContainerElement.innerText = `${getUpdateText()} Took ${timeTaken}ms.`;
+    });
+  })();
+
+  (() => {
+    // setupCompareListener
+    const compareResultContainerElement = document.createElement('div');
+    compareResultContainerElement.id = 'compare-result-container';
+    resultContainerElement.appendChild(compareResultContainerElement);
+
+    let totalResultNumber = 0;
+
+    socket.on(getEventName('compare', ECompareProgressEventType.START), () => {
+      compareResultContainerElement.innerText = `Stared comparing files.`;
+    });
+
+    socket.on(getEventName('compare', ECompareProgressEventType.FOUND), (ev: CompareFoundEvent) => {
+      const { group } = ev;
+      if (group.length > 1) {
+        totalResultNumber++;
+        createGroupContainer(totalResultNumber, group);
+      }
+    });
+
+    const getUpdateText = (complete: number, total: number) => `Compared ${complete} / ${total} files.`;
+    socket.on(getEventName('compare', ECompareProgressEventType.UPDATE), (ev: CompareUpdateEvent) => {
+      const { completed, total } = ev;
+      compareResultContainerElement.innerText = getUpdateText(completed, total);
+    });
+
+    socket.on(getEventName('compare', ECompareProgressEventType.FINISH), (ev: CompareFinishEvent) => {
+      const { completed, total, timeTaken } = ev;
+      compareResultContainerElement.innerText = `${getUpdateText(completed, total)} Took ${timeTaken}ms.`;
+    });
+  })();
 
   function createGroupContainer(resultNumber: number, group: string[]) {
     const resultContainer = document.getElementById('result-container');
@@ -142,25 +181,25 @@ function initializeResultListener(id: string): void {
     deleteButton.innerText = 'delete';
     deleteButton.onclick = async () => {
       const wantDelete = confirm(`Deleting this image will be permanent and can not be undone. Are you sure you really want to delete ${path}`);
-      if(!wantDelete) {
-        return;    
+      if (!wantDelete) {
+        return;
       }
 
-      await postRequest(`${serverUrl}/delete`, { path });    
+      await postRequest(`${serverUrl}/delete`, { path });
 
       const row = column.parentElement;
-      if(!row) {
+      if (!row) {
         return;
       }
 
       const group = row.parentElement;
-      if(!group) {
+      if (!group) {
         return;
       }
 
       row.remove();
       const remainingElements = Array.from(group.children).filter((elem) => elem instanceof HTMLDivElement);
-      if(remainingElements.length <= 1) {
+      if (remainingElements.length <= 1) {
         group.remove();
       }
     };

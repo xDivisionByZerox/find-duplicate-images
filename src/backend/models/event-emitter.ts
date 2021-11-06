@@ -1,8 +1,15 @@
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { ProgressFinishEvent, ProgressFoundEvent, ProgressStartEvent, ProgressUpdateEvent } from '../../shared/events/base.events';
 
-export class EventEmitter {
-  
+export type EventMap<FoundType> = {
+  found$: Observable<ProgressFoundEvent<FoundType>>,
+  finish$: Observable<ProgressFinishEvent>,
+  update$: Observable<ProgressUpdateEvent>,
+  start$: Observable<ProgressStartEvent>,
+};
+
+export class EventEmitter<FoundType> {
+
   private readonly $updateInterval: number;
 
   private readonly $start$ = new Subject<ProgressStartEvent>();
@@ -11,7 +18,7 @@ export class EventEmitter {
   private readonly $update$ = new Subject<ProgressUpdateEvent>();
   readonly update$ = this.$update$.asObservable();
 
-  private readonly $found$ = new Subject<ProgressFoundEvent>();
+  private readonly $found$ = new Subject<ProgressFoundEvent<FoundType>>();
   readonly found$ = this.$found$.asObservable();
 
   private readonly $finish$ = new Subject<ProgressFinishEvent>();
@@ -21,16 +28,39 @@ export class EventEmitter {
     this.$updateInterval = updateInterval;
   }
 
-  start = this.$start$.next;
+  emitStart(value: ProgressStartEvent): ProgressStartEvent {
+    this.$start$.next(value);
 
-  update(event: ProgressUpdateEvent): void {
-    if (event.completed % this.$updateInterval === 0) {
-      this.$update$.next(event);
-    }
+    return value;
   }
 
-  found = this.$found$.next;
+  emitUpdate(value: ProgressUpdateEvent): ProgressUpdateEvent {
+    if (value.completed % this.$updateInterval === 0) {
+      this.$update$.next(value);
+    }
 
-  finish = this.$finish$.next;
+    return value;
+  }
+
+  emitFound(value: ProgressFoundEvent<FoundType>): ProgressFoundEvent<FoundType> {
+    this.$found$.next(value);
+
+    return value;
+  }
+
+  emitFinish(value: ProgressFinishEvent): ProgressFinishEvent {
+    this.$finish$.next(value);
+
+    return value;
+  }
+
+  getEventMap(): EventMap<FoundType> {
+    return {
+      found$: this.found$,
+      finish$: this.finish$,
+      update$: this.update$,
+      start$: this.start$,
+    }
+  }
 
 }

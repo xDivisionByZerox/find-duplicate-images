@@ -1,4 +1,4 @@
-import { ProgressFinishEvent, ProgressFinishEventType, ProgressFoundEvent, ProgressFoundEventType, ProgressStartEvent, ProgressUpdateEvent, ProgressUpdateEventType } from './base.events';
+import { ProgressFinishEvent, ProgressFinishEventConstructor, ProgressFoundEvent, ProgressStartEvent, ProgressUpdateEvent } from './base.events';
 
 export enum ECompareProgressEventType {
   START = 0,
@@ -7,42 +7,24 @@ export enum ECompareProgressEventType {
   FINISH = 3,
 }
 
-export class CompareStartEvent extends ProgressStartEvent {
-  constructor() {
-    super({
-      type: ECompareProgressEventType.START
-    });
-  }
-}
+export class CompareStartEvent extends ProgressStartEvent {}
 
-export class CompareFoundEvent extends ProgressFoundEvent {
-  constructor(params: ProgressFoundEventType) {
-    super({
-      group: params.group,
-      type: ECompareProgressEventType.FOUND,
-    });
-  }
-}
+export class CompareFoundEvent extends ProgressFoundEvent<string[]> {}
 
-export class CompareUpdateEvent extends ProgressUpdateEvent {
-  constructor(params: ProgressUpdateEventType) {
-    super({
-      completed: params.completed,
-      total: params.total,
-      type: ECompareProgressEventType.UPDATE,
-    });
-  }
-}
+export class CompareUpdateEvent extends ProgressUpdateEvent {}
+
+type CompareFinishConstructor = ProgressFinishEventConstructor & {  
+  results: string[][];
+};
 
 export class CompareFinishEvent extends ProgressFinishEvent {
-  constructor(params: ProgressFinishEventType) {
-    super({
-      completed: params.completed,
-      results: params.results,
-      timeTaken: params.timeTaken,
-      total: params.total,
-      type: ECompareProgressEventType.UPDATE,
-    });
+
+  results: string[][];
+
+  constructor(params: CompareFinishConstructor) {
+    super(params);
+
+    this.results = params.results;
   }
 }
 

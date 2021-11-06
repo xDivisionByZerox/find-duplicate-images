@@ -11,6 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
     "module": "CommonJS",
+    "moduleResolution": "node",
     "noEmit": false,
     "noEmitHelpers": false,
     "noEmitOnError": true,
@@ -34,5 +35,9 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
+    "target": "ESNext"
   },
+  "include": [
+    "./src/**/*.ts"
+  ]
 }

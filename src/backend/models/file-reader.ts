@@ -1,8 +1,10 @@
 import { statSync } from 'fs';
 import fsPromise from 'fs/promises';
 import { freemem } from 'os';
-import path from 'path';
+import { isAbsolute, normalize, join } from 'path';
+import { EReadFoundType, ReadFinishEvent, ReadFoundEvent, ReadStartEvent } from '../../shared/events/read.events';
 import { CRC } from './crc';
+import { EventEmitter, EventMap } from './event-emitter';
 
 export interface ICrcResult {
   path: string;
@@ -20,34 +22,48 @@ export class FileReader {
   private readonly $directoyPath: string;
   private readonly $recursive: boolean;
 
+  private readonly $eventEmitter: EventEmitter<string>;
+  readonly events: EventMap<string>;
+
   constructor(params: {
     directoyPath: string;
     recursive?: boolean;
+    updateInterval: number;
   }) {
     const {
       directoyPath,
       recursive = false,
+      updateInterval,
     } = params;
+
+    if (!isAbsolute(directoyPath)) {
+      throw new Error('"directoyPath" must be absolute.');
+    }
 
     this.$directoyPath = directoyPath;
     this.$recursive = recursive;
+    this.$eventEmitter = new EventEmitter(updateInterval);
+    this.events = this.$eventEmitter.getEventMap();
   }
 
-  async read(): Promise<{
-    files: IBufferResult[] | ICrcResult[],
-    filePathes: string[],
-  }> {
+  async read(): Promise<IBufferResult[] | ICrcResult[]> {
+    const startTime = Date.now();
+    this.$eventEmitter.emitStart(new ReadStartEvent());
+
     const { filePathList, totalBytes } = await this.readDirectory(this.$directoyPath, this.$recursive);
     const files = await this.readFromPathes(filePathList, totalBytes);
 
-    return {
-      files,
-      filePathes: filePathList,
-    };
+    this.$eventEmitter.emitFinish(new ReadFinishEvent({
+      startTime,
+      completed: files.length,
+      total: files.length,
+    }));
+
+    return files;
   }
 
   private getPath(...pathes: string[]): string {
-    return path.normalize(path.join(...pathes));
+    return normalize(join(...pathes));
   }
 
   private async readDirectory(directoyPath: string, recursive = false) {
@@ -62,8 +78,16 @@ export class FileReader {
       if (stat.isFile() && this.isImageFile(path)) {
         filePathList.push(path);
         totalBytes = totalBytes + stat.size;
+        this.$eventEmitter.emitFound(new ReadFoundEvent({
+          group: path,
+          type: EReadFoundType.FILE,
+        }));
       } else if (stat.isDirectory()) {
         subDirectorys.push(path);
+        this.$eventEmitter.emitFound(new ReadFoundEvent({
+          group: path,
+          type: EReadFoundType.SUBDIRECTORY,
+        }));
       }
     }
 

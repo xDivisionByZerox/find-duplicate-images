@@ -1,72 +1,50 @@
-export type ProgressEventConstructor = {  
-  type: number;
-}
+export abstract class ProgressStartEvent {
 
-class ProgressEvent {
+  readonly startTime: number;
 
-  readonly type: number;
-
-  constructor(params: ProgressEventConstructor) { 
-    this.type = params.type;
+  constructor(startTime?: number) {
+    this.startTime = startTime ?? Date.now();
   }
 
 }
 
-export abstract class ProgressStartEvent extends ProgressEvent { }
+export abstract class ProgressFoundEvent<T> {
 
-export type ProgressFoundEventType = {
-  group: string[];
-}
+  readonly group: T;
 
-export type ProgressFoundEventConstructor = ProgressEventConstructor & ProgressFoundEventType;
-
-export abstract class ProgressFoundEvent extends ProgressEvent {
-  
-  readonly group: string[];
-
-  constructor(params: ProgressFoundEventConstructor) {
-    super(params);
+  constructor(params: ProgressFoundEvent<T>) {
     this.group = params.group;
   }
 
 }
 
-export type ProgressUpdateEventType = {
-  total: number;
-  completed: number;
-}
-
-export type ProgressUpdateEventConstructor = ProgressEventConstructor & ProgressUpdateEventType;
-
-export abstract class ProgressUpdateEvent extends ProgressEvent {
+export abstract class ProgressUpdateEvent {
 
   readonly total: number;
   readonly completed: number;
 
-  constructor(params: ProgressUpdateEventConstructor) {
-    super(params);
-
+  constructor(params: ProgressUpdateEvent) {
     this.total = params.total;
     this.completed = params.completed;
   }
+
 }
 
-export type ProgressFinishEventType = ProgressUpdateEventType & {
-  timeTaken: number;
-  results: string[][];
-}
-
-export type ProgressFinishEventConstructor = ProgressUpdateEventConstructor & ProgressFinishEventType;
+export type ProgressFinishEventConstructor = Pick<
+  ProgressFinishEvent,
+  'completed'
+  | 'total'
+> & {
+  startTime: number;
+};
 
 export abstract class ProgressFinishEvent extends ProgressUpdateEvent {
 
-  readonly results: string[][];
   readonly timeTaken: number;
 
   constructor(params: ProgressFinishEventConstructor) {
     super(params);
 
-    this.results = params.results;
-    this.timeTaken = params.timeTaken;
+    this.timeTaken = Date.now() - params.startTime;
   }
 }

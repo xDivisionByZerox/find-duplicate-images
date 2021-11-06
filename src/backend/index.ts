@@ -9,6 +9,8 @@ import config from '../shared/config';
 import { DuplicationFinder } from './models/duplication-finder';
 import { ECompareProgressEventType } from '../shared/events/compare.events';
 import { getEventName } from '../shared/events/names.events';
+import { FileReader } from './models/file-reader';
+import { EReadProgressEventType } from '../shared/events/read.events';
 
 const app = express();
 const server = createServer(app);
@@ -36,18 +38,29 @@ app.post('/', (request, response) => {
 
   const id = v4();
   io.of(config.getSocketEnpoint(id)).on('connection', async (socket) => {
-    const finder = new DuplicationFinder({
-      pathToCheck: path,
-      recursive: recursive,
+    const buildReadEventEmitter = (type: EReadProgressEventType) => {
+      return <T>(params: T) => socket.emit(getEventName('read', type), params);
+    };
+    const fileReader = new FileReader({
+      directoyPath: path,
+      recursive,
       updateInterval: 1,
     });
-    const { finish$, start$, update$, found$ } = finder.events;
-    start$.subscribe((p) => socket.emit(getEventName('compare', ECompareProgressEventType.START), p));
-    found$.subscribe((p) => socket.emit(getEventName('compare', ECompareProgressEventType.FOUND), p));
-    update$.subscribe((p) => socket.emit(getEventName('compare', ECompareProgressEventType.UPDATE), p));
-    finish$.subscribe((p) => socket.emit(getEventName('compare', ECompareProgressEventType.FINISH), p));
+    fileReader.events.found$.subscribe(buildReadEventEmitter(EReadProgressEventType.FOUND));
+    fileReader.events.start$.subscribe(buildReadEventEmitter(EReadProgressEventType.START));
+    fileReader.events.finish$.subscribe(buildReadEventEmitter(EReadProgressEventType.FINISH));
+    const files = await fileReader.read();
 
-    await finder.find();
+    const buildCompareEventEmitter = (type: ECompareProgressEventType) => {
+      return <T>(params: T) => socket.emit(getEventName('compare', type), params);
+    };
+    const finder = new DuplicationFinder({ updateInterval: 1 });
+    finder.events.finish$.subscribe(buildCompareEventEmitter(ECompareProgressEventType.FINISH));
+    finder.events.found$.subscribe(buildCompareEventEmitter(ECompareProgressEventType.FOUND));
+    finder.events.start$.subscribe(buildCompareEventEmitter(ECompareProgressEventType.START));
+    finder.events.update$.subscribe(buildCompareEventEmitter(ECompareProgressEventType.UPDATE));
+
+    await finder.find(files);
   });
 
   response.json({ id });

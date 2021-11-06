@@ -126,10 +126,6 @@ main {
   --max-cell-height: 200px;
 }
 
-#result-container #read-count-container {
-  display: none;
-}
-
 #result-container .group-container {
   display: flex;
   flex-flow: column;

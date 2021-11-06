@@ -3,7 +3,7 @@ import { Subject } from 'rxjs';
 import { ProgressFinishEvent, ProgressFoundEvent, ProgressStartEvent, ProgressUpdateEvent } from '../../shared/events/base.events';
 import { ReadStartEvent } from '../../shared/events/read.events';
 import { CompareFinishEvent, CompareFoundEvent, CompareStartEvent, CompareUpdateEvent } from '../../shared/events/compare.events';
-import { EventEmitter } from './event-emitter';
+import { EventEmitter, EventMap } from './event-emitter';
 import { FileReader, IBufferResult, ICrcResult } from './file-reader';
 
 export interface IDuplicateFileFinderConstructor {
@@ -13,61 +13,36 @@ export interface IDuplicateFileFinderConstructor {
 
 export class DuplicationFinder {
 
-  private readonly $fileReader: FileReader;
-  private readonly $eventEmitter: EventEmitter;
-
-  readonly events: {
-    found$: Observable<ProgressFoundEvent>,
-    finish$: Observable<ProgressFinishEvent>,
-    update$: Observable<ProgressUpdateEvent>,
-    start$: Observable<ProgressStartEvent>,
-  };
+  private readonly $eventEmitter: EventEmitter<string[]>;
+  readonly events: EventMap<string[]>;
 
   constructor(params: {
-    pathToCheck: string;
-    recursive: boolean;
     updateInterval: number;
   }) {
-    if (params.pathToCheck.length <= 0) {
-      throw new Error('"pathToCheck" cannot be empty.');
-    }
-
-    this.$fileReader = new FileReader({
-      directoyPath: params.pathToCheck,
-      recursive: params.recursive,
-    });
-
     this.$eventEmitter = new EventEmitter(params.updateInterval);
-    this.events = {
-      finish$: this.$eventEmitter.finish$,
-      found$: this.$eventEmitter.found$,
-      start$: this.$eventEmitter.start$,
-      update$: this.$eventEmitter.update$,
-    };
+    this.events = this.$eventEmitter.getEventMap();
   }
 
-  public async find(): Promise<string[][]> {
-    const startTime = Date.now();
-    this.$eventEmitter.start(new ReadStartEvent());
-    const { files } = await this.$fileReader.read();
+  async find(files: IBufferResult[] | ICrcResult[]): Promise<string[][]> {
+    console.log('start comparing');
+    const startEvent = this.$eventEmitter.emitStart(new CompareStartEvent());
 
-    this.$eventEmitter.start(new CompareStartEvent());
     const total = files.length;
-    const sameFilesGroups = await this.findDuplicatedFromReadResult(files);
+    const sameFilesGroups = await this.compareFromReadResult(files);
 
-    const timeTaken = Date.now() - startTime;
-    this.$eventEmitter.finish(new CompareFinishEvent({
-      timeTaken,
+    this.$eventEmitter.emitFinish(new CompareFinishEvent({
+      startTime: startEvent.startTime,
       results: sameFilesGroups,
       // todo: get this from inner find methode
       completed: total,
       total,
     }));
+    console.log('finished comparing');
 
     return sameFilesGroups;
   }
 
-  private async findDuplicatedFromReadResult(list: IBufferResult[] | ICrcResult[]): Promise<string[][]> {
+  private async compareFromReadResult(list: IBufferResult[] | ICrcResult[]): Promise<string[][]> {
     const sameFiles: string[][] = [];
     const totalFiles = list.length;
     let totalIteration = 0;
@@ -91,20 +66,18 @@ export class DuplicationFinder {
         }
 
         currentIterationSameFiles.push(compare.path);
-
-
         list.splice(compareIndex, 1);
         compareIndex--;
       }
 
       if (currentIterationSameFiles.length > 1) {
         sameFiles.push(currentIterationSameFiles);
-        this.$eventEmitter.found(new CompareFoundEvent({
+        this.$eventEmitter.emitFound(new CompareFoundEvent({
           group: currentIterationSameFiles
         }));
       }
 
-      this.$eventEmitter.update(new CompareUpdateEvent({
+      this.$eventEmitter.emitUpdate(new CompareUpdateEvent({
         completed: totalIteration,
         total: totalFiles,
       }));
