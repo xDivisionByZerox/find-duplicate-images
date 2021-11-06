@@ -24,7 +24,6 @@ export class DuplicationFinder {
   }
 
   async find(files: IBufferResult[] | ICrcResult[]): Promise<string[][]> {
-    console.log('start comparing');
     const startEvent = this.$eventEmitter.emitStart(new CompareStartEvent());
 
     const total = files.length;
@@ -37,7 +36,6 @@ export class DuplicationFinder {
       completed: total,
       total,
     }));
-    console.log('finished comparing');
 
     return sameFilesGroups;
   }
