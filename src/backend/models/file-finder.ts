@@ -1,8 +1,10 @@
-import { statSync } from 'fs';
+import { Stats, statSync } from 'fs';
 import fsPromise from 'fs/promises';
 import { freemem } from 'os';
+import { isAbsolute, normalize, join } from 'path';
+import { EReadFoundType, ReadFinishEvent, ReadFoundEvent, ReadStartEvent } from '../../shared/events/read.events';
 import { CRC } from './crc';
-import { Util } from './util';
+import { EventEmitter, EventMap } from './event-emitter';
 
 export interface ICrcResult {
   path: string;
@@ -14,59 +16,95 @@ export interface IBufferResult {
   result: Buffer;
 }
 
-export class FileReader {
+type StatsWithPath = {
+  stat: Stats;
+  path: string;
+};
+
+export class FileFinder {
 
   private readonly $crcHelper = new CRC();
+  private readonly $directoyPath: string;
+  private readonly $recursive: boolean;
 
-  async read(directoyPath: string, recursive?: boolean): Promise<{
-    files: IBufferResult[] | ICrcResult[],
-    filePathes: string[],
-  }> {
-    const { filePathList, totalBytes } = await this.findElements(directoyPath, recursive);
-    const files = await this.readFromPathes(filePathList, totalBytes);
+  private readonly $eventEmitter: EventEmitter<string>;
+  readonly events: EventMap<string>;
 
-    return { 
-      files, 
-      filePathes: filePathList, 
-    };
+  constructor(params: {
+    directoyPath: string;
+    recursive?: boolean;
+    updateInterval: number;
+  }) {
+    const {
+      directoyPath,
+      recursive = false,
+      updateInterval,
+    } = params;
+
+    if (!isAbsolute(directoyPath)) {
+      throw new Error('"directoyPath" must be absolute.');
+    }
+
+    this.$directoyPath = directoyPath;
+    this.$recursive = recursive;
+    this.$eventEmitter = new EventEmitter(updateInterval);
+    this.events = this.$eventEmitter.getEventMap();
   }
 
-  private async findElements(directoyPath: string, recursive = false) {
-    const { filePathList, subDirectorys, totalBytes } = await this.readDirectory(directoyPath);
-    const totalMb = totalBytes / Math.pow(1024, 2);
+  async find(): Promise<string[]> {
+    const startEvent = this.$eventEmitter.emitStart(new ReadStartEvent());
+    const { filePathList } = await this.readDirectory(this.$directoyPath, this.$recursive);
+    this.$eventEmitter.emitFinish(new ReadFinishEvent({
+      startTime: startEvent.startTime,
+      completed: filePathList.length,
+      total: filePathList.length,
+    }));
 
-    console.log('Found', filePathList.length, 'files');
-    const param = recursive ? 'Deeply searched' : 'Ignored';
-    console.log(param, subDirectorys.length, 'subdirectories.');
-    console.log('Total size:', totalMb.toFixed(2), 'mB');
-    console.log('Start searching for duplicates.');
-
-    return { filePathList, totalBytes };
+    return filePathList;
   }
 
   private async readDirectory(directoyPath: string, recursive = false) {
     const directoryOutput = await fsPromise.readdir(directoyPath);
-    const pathList = directoryOutput.map((fileName) => Util.getPath(directoyPath, fileName));
+    const statsPromises = directoryOutput.map(async (fileName) => {
+      const fullPath = join(directoyPath, fileName);
+      const normalizedFullPath = normalize(fullPath);
+
+      return fsPromise.stat(normalizedFullPath).then((result): StatsWithPath => ({
+        stat: result,
+        path: normalizedFullPath,
+      }));
+    });
+    const statsSettled = await Promise.allSettled(statsPromises);
+    const statsFullFilled = statsSettled.filter((elem): elem is PromiseFulfilledResult<StatsWithPath> => elem.status === 'fulfilled');
+    const stats = statsFullFilled.map((elem) => elem.value);
 
     const filePathList: string[] = [];
     const subDirectorys: string[] = [];
     let totalBytes = 0;
-    for (const path of pathList) {
-      const stat = statSync(path);
+    for (const { stat, path } of stats) {
       if (stat.isFile() && this.isImageFile(path)) {
         filePathList.push(path);
         totalBytes = totalBytes + stat.size;
+        this.$eventEmitter.emitFound(new ReadFoundEvent({
+          group: path,
+          type: EReadFoundType.FILE,
+        }));
       } else if (stat.isDirectory()) {
         subDirectorys.push(path);
+        this.$eventEmitter.emitFound(new ReadFoundEvent({
+          group: path,
+          type: EReadFoundType.SUBDIRECTORY,
+        }));
       }
     }
 
     if (recursive) {
-      for (const subDir of subDirectorys) {
+      const subDirectoryPromises = subDirectorys.map(async (subDir) => {
         const result = await this.readDirectory(subDir, recursive);
         filePathList.push(...result.filePathList);
         totalBytes = totalBytes + result.totalBytes;
-      }
+      });
+      await Promise.allSettled(subDirectoryPromises);
     }
 
     return {
@@ -82,10 +120,6 @@ export class FileReader {
     if (totalBytes < freeBytes - memoryBufferGiB) {
       return this.asBufferMap(filePaths);
     }
-
-    console.log('Total file size will exceed available.');
-    console.log('Will use file hashing algorithm. This will run much slower.');
-    console.log('To speed up this process, search in directorys with not that many files at the same time.');
 
     return this.asCrc32Map(filePaths);
   }
@@ -115,8 +149,6 @@ export class FileReader {
 
       const settled = await Promise.allSettled(promises);
       finished += settled.filter((elem) => elem.status === 'fulfilled').length;
-
-      console.log('Processed', finished, '/', filePaths.length, 'images');
     }
 
     return mapedList;

@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
     "module": "CommonJS",
-    "moduleResolution": "Node",
+    "moduleResolution": "node",
     "noEmit": false,
     "noEmitHelpers": false,
     "noEmitOnError": true,
@@ -23,11 +23,11 @@
     "noImplicitUseStrict": false,
     "noStrictGenericChecks": true,
     "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": false,
     "outDir": "dist",
     "removeComments": true,
-    "resolveJsonModule": true,
+    "resolveJsonModule": false,
     "skipLibCheck": true,
     "sourceMap": false,
     "strict": true,
@@ -35,12 +35,9 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
-    "target": "ESNext",
-    "types": [
-      "node"
-    ],
+    "target": "ESNext"
   },
   "include": [
-    "src/**/*.ts"
+    "./src/**/*.ts"
   ]
 }
