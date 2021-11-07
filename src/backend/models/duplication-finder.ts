@@ -1,13 +1,8 @@
-import { Observable } from 'rxjs';
-import { Subject } from 'rxjs';
-import { ProgressFinishEvent, ProgressFoundEvent, ProgressStartEvent, ProgressUpdateEvent } from '../../shared/events/base.events';
-import { ReadStartEvent } from '../../shared/events/read.events';
+import { createHash } from 'crypto';
+import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { CompareFinishEvent, CompareFoundEvent, CompareStartEvent, CompareUpdateEvent } from '../../shared/events/compare.events';
 import { EventEmitter, EventMap } from './event-emitter';
-import { FileFinder, IBufferResult, ICrcResult } from './file-finder';
-import { readFile, stat } from 'fs/promises';
-import { createHash } from 'crypto';
-import { exists } from 'fs';
 
 export interface IDuplicateFileFinderConstructor {
   pathToCheck: string;
@@ -43,14 +38,25 @@ export class DuplicationFinder {
   }
 
   private async compareFromReadResult(filePathes: string[]): Promise<string[][]> {
+    const chunkSize = 1000;
+    const groups: string[][] = [];
+    // todp, research max file opens os specific
+    // create goups to prevent https://github.com/nodejs/node/issues/4386 from happening
+    for (let i = 0; i < filePathes.length; i += chunkSize) {
+      const temp = filePathes.slice(i, i + chunkSize);
+      groups.push(temp);
+    }
+    console.log('split files into', groups.length, 'groups for hashing');
+
     const hashMap = new Map<string, string>();
-    const bufferPromises = filePathes.map(async (path) => {
-      const buffer = await readFile(path);
-      const hash = createHash('sha256').update(buffer).digest();
-      const hashString = hash.toString('base64');
-      hashMap.set(path, hashString);
-    });
-    await Promise.all(bufferPromises);
+    for (const group of groups) {
+      const promises = group.map(async (path) => {
+        const buffer = await readFile(path);
+        const hash = createHash('sha256').update(buffer).digest('hex');
+        hashMap.set(path, hash);
+      });
+      await Promise.allSettled(promises);
+    }
 
     const duplicateMap = new Map<string, string[]>();
     let interations = 0;
@@ -74,7 +80,7 @@ export class DuplicationFinder {
     }
 
     const duplicates = Array.from(duplicateMap.values()).filter((elem) => elem.length > 1);
-    
+
     return duplicates;
   }
 
