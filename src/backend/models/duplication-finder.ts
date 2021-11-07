@@ -40,13 +40,12 @@ export class DuplicationFinder {
   private async compareFromReadResult(filePathes: string[]): Promise<string[][]> {
     const chunkSize = 1000;
     const groups: string[][] = [];
-    // todp, research max file opens os specific
+    // todo, research max file opens os specific
     // create goups to prevent https://github.com/nodejs/node/issues/4386 from happening
     for (let i = 0; i < filePathes.length; i += chunkSize) {
       const temp = filePathes.slice(i, i + chunkSize);
       groups.push(temp);
     }
-    console.log('split files into', groups.length, 'groups for hashing');
 
     const hashMap = new Map<string, string>();
     for (const group of groups) {
