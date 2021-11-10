@@ -4,13 +4,12 @@ import { statSync, unlinkSync } from 'fs';
 import { createServer } from 'http';
 import { isAbsolute } from 'path';
 import { Server } from 'socket.io';
-import { v4 } from 'uuid';
 import config from '../shared/config';
-import { DuplicationFinder } from './models/duplication-finder';
 import { ECompareProgressEventType } from '../shared/events/compare.events';
 import { getEventName } from '../shared/events/names.events';
-import { FileFinder } from './models/file-finder';
 import { EReadProgressEventType } from '../shared/events/read.events';
+import { DuplicationFinder } from './models/duplication-finder';
+import { FileFinder } from './models/file-finder';
 
 const app = express();
 const server = createServer(app);
@@ -36,7 +35,7 @@ app.post('/', (request, response) => {
     return;
   }
 
-  const id = v4();
+  const id = Date.now().toString();
   io.of(config.getSocketEnpoint(id)).on('connection', async (socket) => {
     const fileReader = new FileFinder({
       directoyPath: path,
