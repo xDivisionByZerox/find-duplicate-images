@@ -38,14 +38,14 @@ app.post('/', (request, response) => {
 
   const id = v4();
   io.of(config.getSocketEnpoint(id)).on('connection', async (socket) => {
-    const buildReadEventEmitter = (type: EReadProgressEventType) => {
-      return <T>(params: T) => socket.emit(getEventName('read', type), params);
-    };
     const fileReader = new FileFinder({
       directoyPath: path,
       recursive,
       updateInterval: 1,
     });
+    const buildReadEventEmitter = (type: EReadProgressEventType) => {
+      return <T>(params: T) => socket.emit(getEventName('read', type), params);
+    };
     fileReader.events.found$.subscribe(buildReadEventEmitter(EReadProgressEventType.FOUND));
     fileReader.events.start$.subscribe(buildReadEventEmitter(EReadProgressEventType.START));
     fileReader.events.finish$.subscribe(buildReadEventEmitter(EReadProgressEventType.FINISH));

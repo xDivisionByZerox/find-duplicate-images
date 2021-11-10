@@ -22,7 +22,7 @@ export class DuplicationFinder {
   }
 
   async find(files: string[]): Promise<string[][]> {
-    const total = files.length;
+    const totalFileNumber = files.length;
 
     const startEvent = this.$eventEmitter.emitStart(new CompareStartEvent());
     const sameFilesGroups = await this.compareFromReadResult(files);
@@ -30,8 +30,8 @@ export class DuplicationFinder {
       startTime: startEvent.startTime,
       results: sameFilesGroups,
       // todo: get this from inner find methode
-      completed: total,
-      total,
+      completed: totalFileNumber,
+      total: totalFileNumber,
     }));
 
     return sameFilesGroups;

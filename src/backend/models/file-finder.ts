@@ -1,9 +1,7 @@
-import { Stats, statSync } from 'fs';
+import { Stats } from 'fs';
 import fsPromise from 'fs/promises';
-import { freemem } from 'os';
-import { isAbsolute, normalize, join } from 'path';
+import { isAbsolute, join, normalize } from 'path';
 import { EReadFoundType, ReadFinishEvent, ReadFoundEvent, ReadStartEvent } from '../../shared/events/read.events';
-import { CRC } from './crc';
 import { EventEmitter, EventMap } from './event-emitter';
 
 export interface ICrcResult {
@@ -23,7 +21,6 @@ type StatsWithPath = {
 
 export class FileFinder {
 
-  private readonly $crcHelper = new CRC();
   private readonly $directoyPath: string;
   private readonly $recursive: boolean;
 
@@ -114,72 +111,6 @@ export class FileFinder {
     };
   }
 
-  private async readFromPathes(filePaths: string[], totalBytes: number) {
-    const freeBytes = freemem();
-    const memoryBufferGiB = 0.5 * Math.pow(1024, 3);
-    if (totalBytes < freeBytes - memoryBufferGiB) {
-      return this.asBufferMap(filePaths);
-    }
-
-    return this.asCrc32Map(filePaths);
-  }
-
-  private async asCrc32Map(filePaths: string[]): Promise<ICrcResult[]> {
-    const mapedList: ICrcResult[] = [];
-
-    // split file list into sub lists to not overstep max memory usage while reading a bunch of buffers
-    // todo: make part size dynamic based on free memory (use freemem imported by os)
-    const partSize = 1024;
-    const max = filePaths.length - 1;
-    let finished = 0;
-    for (let i = 0; i <= max; i += partSize) {
-      const currList = filePaths.slice(i, i + partSize);
-
-      const promises: Promise<void>[] = [];
-      for (let fileIndex = 0; fileIndex <= currList.length - 1; fileIndex++) {
-        const path = currList[fileIndex]!;
-        const promise = fsPromise.readFile(path).then((buffer) => {
-          mapedList.push({
-            result: this.$crcHelper.generate(buffer.toString()),
-            path,
-          });
-        });
-        promises.push(promise);
-      }
-
-      const settled = await Promise.allSettled(promises);
-      finished += settled.filter((elem) => elem.status === 'fulfilled').length;
-    }
-
-    return mapedList;
-  }
-
-  private async asBufferMap(filePaths: string[]): Promise<IBufferResult[]> {
-    interface IBufferMapedIndex {
-      buffer: Buffer;
-      fileIndex: number;
-    }
-
-    const promises = filePaths.map((filePath, index) => fsPromise.readFile(filePath).then((res) => ({
-      buffer: res,
-      fileIndex: index,
-    })));
-    const settled = await Promise.allSettled(promises);
-    const mapedBuffers: IBufferMapedIndex[] = [];
-    for (const res of settled) {
-      if (res.status === 'fulfilled') {
-        mapedBuffers.push(res.value);
-      }
-    }
-
-    const map = mapedBuffers.map((maped): IBufferResult => ({
-      result: maped.buffer,
-      path: filePaths[maped.fileIndex]!,
-    }));
-
-    return map;
-  }
-
   private isImageFile = (path: string): boolean => {
     const extension = path.split('.').pop();
     if (extension === undefined) {
@@ -197,6 +128,5 @@ export class FileFinder {
       'tiff',
     ].includes(extension.toLowerCase());
   }
-
 
 }
