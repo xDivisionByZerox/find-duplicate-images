@@ -59,7 +59,7 @@ app.post('/', (request, response) => {
     finder.events.start$.subscribe(buildCompareEventEmitter(ECompareProgressEventType.START));
     finder.events.update$.subscribe(buildCompareEventEmitter(ECompareProgressEventType.UPDATE));
 
-    await finder.find(files);
+    finder.find(files);
   });
 
   response.json({ id });
