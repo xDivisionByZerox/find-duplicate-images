@@ -1,8 +1,5 @@
-import { exec } from 'child_process';
+import { execSync } from 'child_process';
 import path from 'path';
-
-const backendEntry = path.join(__dirname, 'backend', 'index.js');
-exec(`node ${backendEntry}`);
 
 function getStartBrowserCommand() {
   const { platform } = process;
@@ -15,4 +12,9 @@ function getStartBrowserCommand() {
 
 const viewFile = path.join(__dirname, 'frontend', 'frontend.html');
 const cmd = getStartBrowserCommand();
-exec(`${cmd} ${viewFile}`);
+execSync(`${cmd} ${viewFile}`);
+
+const backendEntry = path.join(__dirname, 'backend', 'index.js');
+execSync(`node ${backendEntry}`, {
+  stdio: 'inherit',
+});
