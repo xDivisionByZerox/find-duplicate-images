@@ -16,7 +16,7 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: '*',
-  }
+  },
 });
 
 app.use(...[
@@ -42,17 +42,13 @@ app.post('/', (request, response) => {
       recursive,
       updateInterval: 1,
     });
-    const buildReadEventEmitter = (type: EReadProgressEventType) => {
-      return <T>(params: T) => socket.emit(getEventName('read', type), params);
-    };
+    const buildReadEventEmitter = (type: EReadProgressEventType) => <T>(params: T) => socket.emit(getEventName('read', type), params);
     fileReader.events.found$.subscribe(buildReadEventEmitter(EReadProgressEventType.FOUND));
     fileReader.events.start$.subscribe(buildReadEventEmitter(EReadProgressEventType.START));
     fileReader.events.finish$.subscribe(buildReadEventEmitter(EReadProgressEventType.FINISH));
     const files = await fileReader.find();
 
-    const buildCompareEventEmitter = (type: ECompareProgressEventType) => {
-      return <T>(params: T) => socket.emit(getEventName('compare', type), params);
-    };
+    const buildCompareEventEmitter = (type: ECompareProgressEventType) => <T>(params: T) => socket.emit(getEventName('compare', type), params);
     const finder = new DuplicationFinder({ updateInterval: 1 });
     finder.events.finish$.subscribe(buildCompareEventEmitter(ECompareProgressEventType.FINISH));
     finder.events.found$.subscribe(buildCompareEventEmitter(ECompareProgressEventType.FOUND));

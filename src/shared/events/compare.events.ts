@@ -13,7 +13,7 @@ export class CompareFoundEvent extends ProgressFoundEvent<string[]> {}
 
 export class CompareUpdateEvent extends ProgressUpdateEvent {}
 
-type CompareFinishConstructor = ProgressFinishEventConstructor & {  
+type CompareFinishConstructor = ProgressFinishEventConstructor & {
   results: string[][];
 };
 
@@ -26,6 +26,7 @@ export class CompareFinishEvent extends ProgressFinishEvent {
 
     this.results = params.results;
   }
+
 }
 
 

@@ -127,6 +127,6 @@ export class FileFinder {
       'tif',
       'tiff',
     ].includes(extension.toLowerCase());
-  }
+  };
 
 }

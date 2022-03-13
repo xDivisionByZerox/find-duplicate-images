@@ -30,7 +30,7 @@ async function submitConfiguration(): Promise<void> {
     throw new Error('got no id from backend');
   }
 
-  initializeResultListener(id)
+  initializeResultListener(id);
 }
 
 async function postRequest(url: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -39,9 +39,9 @@ async function postRequest(url: string, body: Record<string, unknown>): Promise<
     method: 'POST',
     headers: {
       'Accept': 'application/json',
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
-  }).then((response) => response.json());
+  }).then(async (response) => response.json());
 }
 
 function initializeResultListener(id: string): void {
@@ -64,7 +64,7 @@ function initializeResultListener(id: string): void {
     resultContainerElement.appendChild(readResultContainerElement);
 
     socket.on(getEventName('read', EReadProgressEventType.START), () => {
-      readResultContainerElement.innerText = `Stared reading files.`;
+      readResultContainerElement.innerText = 'Stared reading files.';
     });
 
     let files = 0;
@@ -96,7 +96,7 @@ function initializeResultListener(id: string): void {
     let totalResultNumber = 0;
 
     socket.on(getEventName('compare', ECompareProgressEventType.START), () => {
-      compareResultContainerElement.innerText = `Stared comparing files.`;
+      compareResultContainerElement.innerText = 'Stared comparing files.';
     });
 
     socket.on(getEventName('compare', ECompareProgressEventType.FOUND), (ev: CompareFoundEvent) => {
@@ -135,7 +135,7 @@ function initializeResultListener(id: string): void {
 
     for (const path of group) {
       const row = document.createElement('section');
-      row.classList.add('row')
+      row.classList.add('row');
 
       row.appendChild(createNameColumn(path));
       row.appendChild(createImageColumn(path));
@@ -150,7 +150,10 @@ function initializeResultListener(id: string): void {
   function createNameColumn(path: string) {
     const tableColName = document.createElement('section');
     tableColName.classList.add('col');
-    tableColName.innerText = path.replace(/\\/g, '/').split('/').pop() ?? '';
+    tableColName.innerText = path
+      .replace(/\\/g, '/')
+      .split('/')
+      .pop() ?? '';
 
     return tableColName;
   }
@@ -180,6 +183,7 @@ function initializeResultListener(id: string): void {
     const deleteButton = document.createElement('button');
     deleteButton.innerText = 'delete';
     deleteButton.onclick = async () => {
+      // eslint-disable-next-line no-alert
       const wantDelete = confirm(`Deleting this image will be permanent and can not be undone. Are you sure you really want to delete ${path}`);
       if (!wantDelete) {
         return;

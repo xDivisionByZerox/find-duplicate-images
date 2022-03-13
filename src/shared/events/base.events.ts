@@ -47,4 +47,5 @@ export abstract class ProgressFinishEvent extends ProgressUpdateEvent {
 
     this.timeTaken = Date.now() - params.startTime;
   }
+
 }

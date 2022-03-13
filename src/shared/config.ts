@@ -4,4 +4,4 @@ export default {
   },
   backendPort: 3000,
   backendDomain: 'http://localhost',
-}
+};

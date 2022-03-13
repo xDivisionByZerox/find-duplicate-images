@@ -60,7 +60,7 @@ export class EventEmitter<FoundType> {
       finish$: this.finish$,
       update$: this.update$,
       start$: this.start$,
-    }
+    };
   }
 
 }

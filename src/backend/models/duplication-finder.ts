@@ -41,9 +41,11 @@ export class DuplicationFinder {
     const hashMap = new Map<string, string[]>();
     let interations = 0;
 
-   for (const path of filePathes) {
+    for (const path of filePathes) {
       const buffer = readFileSync(path);
-      const hash = createHash('sha256').update(buffer).digest('hex');
+      const hash = createHash('sha256')
+        .update(buffer)
+        .digest('hex');
       const existing = hashMap.get(hash);
       if (existing !== undefined) {
         existing.push(path);
