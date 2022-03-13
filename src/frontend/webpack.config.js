@@ -3,6 +3,11 @@ const path = require('path');
 
 const outputDir = path.resolve(__dirname, '../..', 'dist', 'frontend');
 
+/**
+ * 
+ * @param {string} name 
+ * @returns 
+ */
 function getCopyDefinition(name) {
   return {
     from: path.resolve(__dirname, name),
