@@ -4,16 +4,6 @@ import { isAbsolute, join, normalize } from 'path';
 import { EReadFoundType, ReadFinishEvent, ReadFoundEvent, ReadStartEvent } from '../../shared/events/read.events';
 import { EventEmitter, EventMap } from './event-emitter';
 
-export interface ICrcResult {
-  path: string;
-  result: number;
-}
-
-export interface IBufferResult {
-  path: string;
-  result: Buffer;
-}
-
 type StatsWithPath = {
   stat: Stats;
   path: string;
