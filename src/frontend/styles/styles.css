@@ -155,3 +155,18 @@ main {
   object-fit: contain;
   max-height: var(--max-cell-height);
 }
+
+.spinner {
+  width: 2rem;
+  height: 2rem;
+  border: .25em solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: .75s linear infinite spin;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}

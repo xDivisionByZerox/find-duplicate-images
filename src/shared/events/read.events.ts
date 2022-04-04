@@ -1,4 +1,4 @@
-import { ProgressFinishEvent, ProgressFoundEvent, ProgressStartEvent } from './base.events';
+import { ProgressFinishEvent, ProgressStartEvent } from './base.events';
 
 export enum EReadProgressEventType {
   START = 0,
@@ -8,25 +8,29 @@ export enum EReadProgressEventType {
 
 export class ReadStartEvent extends ProgressStartEvent { }
 
-export enum EReadFoundType {
-  FILE,
-  SUBDIRECTORY,
+type ReadFinishEventConstructor = {
+  files: number;
+  subDirectories: number;
+  totalBytes: number;
+  startTime: number;
 }
 
-type ReadFoundEventConstructor = ProgressFoundEvent<string> & {
-  type: EReadFoundType;
-}
+export class ReadFinishEvent extends ProgressFinishEvent {
 
-export class ReadFoundEvent extends ProgressFoundEvent<string> {
+  files: number;
+  subDirectories: number;
+  totalBytes: number;
 
-  type: EReadFoundType;
+  constructor(params: ReadFinishEventConstructor) {
+    super({
+      completed: params.files,
+      startTime: params.startTime,
+      total: params.files,
+    });
 
-  constructor(params: ReadFoundEventConstructor) {
-    super(params);
-
-    this.type = params.type;
+    this.files = params.files;
+    this.subDirectories = params.subDirectories;
+    this.totalBytes = params.totalBytes;
   }
 
 }
-
-export class ReadFinishEvent extends ProgressFinishEvent { }

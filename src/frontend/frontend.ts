@@ -1,8 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 import config from '../shared/config';
-import { getEventName } from '../shared/events/names.events';
 import { CompareFinishEvent, CompareFoundEvent, CompareUpdateEvent, ECompareProgressEventType } from '../shared/events/compare.events';
-import { EReadFoundType, EReadProgressEventType, ReadFinishEvent, ReadFoundEvent } from '../shared/events/read.events';
+import { getEventName } from '../shared/events/names.events';
+import { EReadProgressEventType, ReadFinishEvent } from '../shared/events/read.events';
+import { createSpinner } from './components/spinner.component';
 
 const configSubmitButton = document.getElementById('submit-configuration');
 if (!(configSubmitButton instanceof HTMLButtonElement)) {
@@ -61,29 +62,33 @@ function initializeResultListener(id: string): void {
     // setupReadListener
     const readResultContainerElement = document.createElement('div');
     readResultContainerElement.id = 'read-result-container';
+
+    const readResultTextElement = document.createElement('div');
+    const spinner = createSpinner();
+    readResultContainerElement.appendChild(readResultTextElement);
+
     resultContainerElement.appendChild(readResultContainerElement);
 
     socket.on(getEventName('read', EReadProgressEventType.START), () => {
-      readResultContainerElement.innerText = 'Stared reading files.';
-    });
-
-    let files = 0;
-    let subdirectories = 0;
-    const getUpdateText = () => `Found ${files} files and ${subdirectories} subdirectories.`;
-    socket.on(getEventName('read', EReadProgressEventType.FOUND), (ev: ReadFoundEvent) => {
-      const { type } = ev;
-      if (type === EReadFoundType.FILE) {
-        files++;
-      } else if (type === EReadFoundType.SUBDIRECTORY) {
-        subdirectories++;
-      }
-
-      readResultContainerElement.innerText = getUpdateText();
+      readResultTextElement.innerText = 'Stared reading files.';
+      readResultContainerElement.appendChild(spinner);
     });
 
     socket.on(getEventName('read', EReadProgressEventType.FINISH), (ev: ReadFinishEvent) => {
-      const { timeTaken } = ev;
-      readResultContainerElement.innerText = `${getUpdateText()} Took ${timeTaken}ms.`;
+      const {
+        timeTaken,
+        files,
+        subDirectories,
+        totalBytes,
+      } = ev;
+
+      readResultTextElement.innerText = [
+        `Found ${files} files.`,
+        `Found ${subDirectories} subdirectories.`,
+        `Found total of ${totalBytes} bytes.`,
+        `Took ${timeTaken}ms.`,
+      ].join('\n');
+      spinner.style.display = 'none';
     });
   })();
 
@@ -92,11 +97,13 @@ function initializeResultListener(id: string): void {
     const compareResultContainerElement = document.createElement('div');
     compareResultContainerElement.id = 'compare-result-container';
     resultContainerElement.appendChild(compareResultContainerElement);
+    const spinner = createSpinner();
 
     let totalResultNumber = 0;
 
     socket.on(getEventName('compare', ECompareProgressEventType.START), () => {
       compareResultContainerElement.innerText = 'Stared comparing files.';
+      compareResultContainerElement.appendChild(spinner);
     });
 
     socket.on(getEventName('compare', ECompareProgressEventType.FOUND), (ev: CompareFoundEvent) => {
@@ -116,6 +123,7 @@ function initializeResultListener(id: string): void {
     socket.on(getEventName('compare', ECompareProgressEventType.FINISH), (ev: CompareFinishEvent) => {
       const { completed, total, timeTaken } = ev;
       compareResultContainerElement.innerText = `${getUpdateText(completed, total)} Took ${timeTaken}ms.`;
+      spinner.style.display = 'none';
     });
   })();
 

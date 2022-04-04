@@ -1,17 +1,13 @@
-import { Stats } from 'fs';
-import fsPromise from 'fs/promises';
+import { readdir, stat } from 'fs/promises';
 import { isAbsolute, join, normalize } from 'path';
-import { EReadFoundType, ReadFinishEvent, ReadFoundEvent, ReadStartEvent } from '../../shared/events/read.events';
+import { ReadFinishEvent, ReadStartEvent } from '../../shared/events/read.events';
+import { Logger } from './logger';
 import { EventEmitter, EventMap } from './event-emitter';
-
-type StatsWithPath = {
-  stat: Stats;
-  path: string;
-};
 
 export class FileFinder {
 
   private readonly $directoyPath: string;
+  private readonly $logger: Logger;
   private readonly $recursive: boolean;
 
   private readonly $eventEmitter: EventEmitter<string>;
@@ -19,10 +15,12 @@ export class FileFinder {
 
   constructor(params: {
     directoyPath: string;
+    log?: boolean;
     recursive?: boolean;
     updateInterval: number;
   }) {
     const {
+      log: debug = false,
       directoyPath,
       recursive = false,
       updateInterval,
@@ -32,70 +30,69 @@ export class FileFinder {
       throw new Error('"directoyPath" must be absolute.');
     }
 
+    this.$logger = new Logger('FileFinder', debug);
     this.$directoyPath = directoyPath;
-    this.$recursive = recursive;
     this.$eventEmitter = new EventEmitter(updateInterval);
+    this.$recursive = recursive;
     this.events = this.$eventEmitter.getEventMap();
   }
 
   async find(): Promise<string[]> {
-    const startEvent = this.$eventEmitter.emitStart(new ReadStartEvent());
-    const { filePathList } = await this.readDirectory(this.$directoyPath, this.$recursive);
-    this.$eventEmitter.emitFinish(new ReadFinishEvent({
-      startTime: startEvent.startTime,
-      completed: filePathList.length,
-      total: filePathList.length,
-    }));
+    const startEvent = new ReadStartEvent();
+    this.$eventEmitter.emitStart(startEvent);
+    this.$logger.log('StartEvent:', startEvent);
 
-    return filePathList;
+    const { filePathes, subDirectorys, totalBytes } = await this.readDirectory(this.$directoyPath, this.$recursive);
+
+    const endEvent = new ReadFinishEvent({
+      startTime: startEvent.startTime,
+      files: filePathes.length,
+      subDirectories: subDirectorys.length,
+      totalBytes,
+    });
+    this.$eventEmitter.emitFinish(endEvent);
+    this.$logger.log('EndEvent:', endEvent);
+
+    return filePathes;
   }
 
-  private async readDirectory(directoyPath: string, recursive = false) {
-    const directoryOutput = await fsPromise.readdir(directoyPath);
-    const statsPromises = directoryOutput.map(async (fileName) => {
-      const fullPath = join(directoyPath, fileName);
-      const normalizedFullPath = normalize(fullPath);
-
-      return fsPromise.stat(normalizedFullPath).then((result): StatsWithPath => ({
-        stat: result,
-        path: normalizedFullPath,
-      }));
-    });
-    const statsSettled = await Promise.allSettled(statsPromises);
-    const statsFullFilled = statsSettled.filter((elem): elem is PromiseFulfilledResult<StatsWithPath> => elem.status === 'fulfilled');
-    const stats = statsFullFilled.map((elem) => elem.value);
-
-    const filePathList: string[] = [];
+  private async readDirectory(directoyPath: string, recursive: boolean) {
+    const filePathes: string[] = [];
     const subDirectorys: string[] = [];
     let totalBytes = 0;
-    for (const { stat, path } of stats) {
-      if (stat.isFile() && this.isImageFile(path)) {
-        filePathList.push(path);
-        totalBytes = totalBytes + stat.size;
-        this.$eventEmitter.emitFound(new ReadFoundEvent({
-          group: path,
-          type: EReadFoundType.FILE,
-        }));
-      } else if (stat.isDirectory()) {
-        subDirectorys.push(path);
-        this.$eventEmitter.emitFound(new ReadFoundEvent({
-          group: path,
-          type: EReadFoundType.SUBDIRECTORY,
-        }));
+
+
+    this.$logger.log('read:', directoyPath);
+    const directoryOutput = await readdir(directoyPath);
+    const promises = directoryOutput.map(async (fileName) => {
+      const fullPath = normalize(join(directoyPath, fileName));
+      const stats = await stat(fullPath);
+
+      const isFile = stats.isFile();
+      const isImage = this.isImageFile(fullPath);
+      const isDirectory = stats.isDirectory();
+      if (isFile && isImage) {
+        filePathes.push(fullPath);
+        totalBytes = totalBytes + stats.size;
+      } else if (isDirectory) {
+        subDirectorys.push(fullPath);
       }
-    }
+    });
+    await Promise.allSettled(promises);
 
     if (recursive) {
-      const subDirectoryPromises = subDirectorys.map(async (subDir) => {
+      // copy `subDirectorys` to not override it while mapping
+      const subDirectoryPromises = [...subDirectorys].map(async (subDir) => {
         const result = await this.readDirectory(subDir, recursive);
-        filePathList.push(...result.filePathList);
+        subDirectorys.push(...result.subDirectorys);
+        filePathes.push(...result.filePathes);
         totalBytes = totalBytes + result.totalBytes;
       });
       await Promise.allSettled(subDirectoryPromises);
     }
 
     return {
-      filePathList,
+      filePathes,
       subDirectorys,
       totalBytes,
     };
