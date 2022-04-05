@@ -3,7 +3,10 @@ import config from '../shared/config';
 import { CompareFinishEvent, CompareFoundEvent, CompareUpdateEvent, ECompareProgressEventType } from '../shared/events/compare.events';
 import { getEventName } from '../shared/events/names.events';
 import { EReadProgressEventType, ReadFinishEvent } from '../shared/events/read.events';
-import { createSpinner } from './components/spinner.component';
+import { createResultGroupComponent } from './components/result-group.container';
+import { createSpinnerComponent } from './components/spinner.component';
+import { serverUrl } from './config/server-url.constant';
+import { postRequest } from './util/request';
 
 const configSubmitButton = document.getElementById('submit-configuration');
 if (!(configSubmitButton instanceof HTMLButtonElement)) {
@@ -11,7 +14,6 @@ if (!(configSubmitButton instanceof HTMLButtonElement)) {
 }
 
 configSubmitButton.onclick = submitConfiguration;
-const serverUrl = `${config.backendDomain}:${config.backendPort}`;
 
 async function submitConfiguration(): Promise<void> {
   const pathInput = document.getElementById('path-input');
@@ -34,17 +36,6 @@ async function submitConfiguration(): Promise<void> {
   initializeResultListener(id);
 }
 
-async function postRequest(url: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
-  return fetch(url, {
-    body: JSON.stringify(body),
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
-  }).then(async (response) => response.json());
-}
-
 function initializeResultListener(id: string): void {
   const configContainer = document.getElementById('configuration-container');
   if (configContainer) {
@@ -64,7 +55,7 @@ function initializeResultListener(id: string): void {
     readResultContainerElement.id = 'read-result-container';
 
     const readResultTextElement = document.createElement('div');
-    const spinner = createSpinner();
+    const spinner = createSpinnerComponent();
     readResultContainerElement.appendChild(readResultTextElement);
 
     resultContainerElement.appendChild(readResultContainerElement);
@@ -97,7 +88,7 @@ function initializeResultListener(id: string): void {
     const compareResultContainerElement = document.createElement('div');
     compareResultContainerElement.id = 'compare-result-container';
     resultContainerElement.appendChild(compareResultContainerElement);
-    const spinner = createSpinner();
+    const spinner = createSpinnerComponent();
 
     let totalResultNumber = 0;
 
@@ -133,90 +124,7 @@ function initializeResultListener(id: string): void {
       throw new Error('can not find result container');
     }
 
-    const groupContainer = document.createElement('section');
-    groupContainer.classList.add('group-container');
-
-    const groupHeaderRow = document.createElement('h3');
-    groupHeaderRow.classList.add('row');
-    groupHeaderRow.innerText = `Group ${resultNumber}`;
-    groupContainer.appendChild(groupHeaderRow);
-
-    for (const path of group) {
-      const row = document.createElement('section');
-      row.classList.add('row');
-
-      row.appendChild(createNameColumn(path));
-      row.appendChild(createImageColumn(path));
-      row.appendChild(createDeleteButtonColumn(path));
-
-      groupContainer.appendChild(row);
-    }
-
-    resultContainer.appendChild(groupContainer);
-  }
-
-  function createNameColumn(path: string) {
-    const tableColName = document.createElement('section');
-    tableColName.classList.add('col');
-    tableColName.innerText = path
-      .replace(/\\/g, '/')
-      .split('/')
-      .pop() ?? '';
-
-    return tableColName;
-  }
-
-  function createImageColumn(path: string) {
-    const column = document.createElement('section');
-    column.classList.add('col');
-
-    const anchor = document.createElement('a');
-    anchor.href = path;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-
-    const imageElement = document.createElement('img');
-    imageElement.src = path;
-    imageElement.alt = `Preview of photo with path ${path}`;
-
-    anchor.appendChild(imageElement);
-    column.appendChild(anchor);
-
-    return column;
-  }
-
-  function createDeleteButtonColumn(path: string) {
-    const column = document.createElement('section');
-    column.classList.add('col');
-    const deleteButton = document.createElement('button');
-    deleteButton.innerText = 'delete';
-    deleteButton.onclick = async () => {
-      // eslint-disable-next-line no-alert
-      const wantDelete = confirm(`Deleting this image will be permanent and can not be undone. Are you sure you really want to delete ${path}`);
-      if (!wantDelete) {
-        return;
-      }
-
-      await postRequest(`${serverUrl}/delete`, { path });
-
-      const row = column.parentElement;
-      if (!row) {
-        return;
-      }
-
-      const group = row.parentElement;
-      if (!group) {
-        return;
-      }
-
-      row.remove();
-      const remainingElements = Array.from(group.children).filter((elem) => elem instanceof HTMLDivElement);
-      if (remainingElements.length <= 1) {
-        group.remove();
-      }
-    };
-    column.appendChild(deleteButton);
-
-    return column;
+    const resultGroupComponent = createResultGroupComponent(resultNumber, group);
+    resultContainer.appendChild(resultGroupComponent);
   }
 }
