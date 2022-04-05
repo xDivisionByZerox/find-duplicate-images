@@ -3,7 +3,7 @@ import config from '../shared/config';
 import { CompareFinishEvent, CompareFoundEvent, CompareUpdateEvent, ECompareProgressEventType } from '../shared/events/compare.events';
 import { getEventName } from '../shared/events/names.events';
 import { EReadProgressEventType, ReadFinishEvent } from '../shared/events/read.events';
-import { createResultGroupComponent } from './components/result-group.container';
+import { createResultGroupComponent } from './components/result-group.component';
 import { createSpinnerComponent } from './components/spinner.component';
 import { serverUrl } from './config/server-url.constant';
 import { postRequest } from './util/request';
