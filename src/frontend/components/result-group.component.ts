@@ -1,5 +1,5 @@
-import { serverUrl } from '../config/server-url.constant';
 import { postRequest } from '../util/request';
+import { environment } from '../../shared/environment';
 
 export function createResultGroupComponent(resultNumber: number, group: string[]) {
   const elem = document.createElement('section');
@@ -66,7 +66,7 @@ function createDeleteButtonColumn(path: string) {
       return;
     }
 
-    await postRequest(`${serverUrl}/delete`, { path });
+    await postRequest(`${environment.backendUrl}/delete`, { path });
 
     const row = column.parentElement;
     if (!row) {

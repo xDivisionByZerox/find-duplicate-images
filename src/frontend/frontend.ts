@@ -1,11 +1,10 @@
 import { io, Socket } from 'socket.io-client';
-import config from '../shared/config';
+import { environment } from '../shared/environment';
 import { CompareFinishEvent, CompareFoundEvent, CompareUpdateEvent, ECompareProgressEventType } from '../shared/events/compare.events';
 import { getEventName } from '../shared/events/names.events';
 import { EReadProgressEventType, ReadFinishEvent } from '../shared/events/read.events';
 import { createResultGroupComponent } from './components/result-group.component';
 import { createSpinnerComponent } from './components/spinner.component';
-import { serverUrl } from './config/server-url.constant';
 import { postRequest } from './util/request';
 
 const configSubmitButton = document.getElementById('submit-configuration');
@@ -28,7 +27,7 @@ async function submitConfiguration(): Promise<void> {
   }
   const recursive = recursiveInput.checked;
 
-  const { id } = await postRequest(serverUrl, { recursive, path });
+  const { id } = await postRequest(environment.backendUrl, { recursive, path });
   if (typeof id !== 'string') {
     throw new Error('got no id from backend');
   }
@@ -47,7 +46,7 @@ function initializeResultListener(id: string): void {
     throw new Error('no resultContainerElement');
   }
 
-  const socket: Socket = io(`${config.backendDomain}:${config.backendPort}${config.getSocketEnpoint(id)}`);
+  const socket: Socket = io(`${environment.backendUrl}${environment.getSocketEnpoint(id)}`);
 
   (() => {
     // setupReadListener

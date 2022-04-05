@@ -4,7 +4,7 @@ import { statSync, unlinkSync } from 'fs';
 import { createServer } from 'http';
 import { isAbsolute } from 'path';
 import { Server } from 'socket.io';
-import config from '../shared/config';
+import { environment } from '../shared/environment';
 import { ECompareProgressEventType } from '../shared/events/compare.events';
 import { getEventName } from '../shared/events/names.events';
 import { EReadProgressEventType } from '../shared/events/read.events';
@@ -36,7 +36,7 @@ app.post('/', (request, response) => {
   }
 
   const id = Date.now().toString();
-  io.of(config.getSocketEnpoint(id)).on('connection', async (socket) => {
+  io.of(environment.getSocketEnpoint(id)).on('connection', async (socket) => {
     const fileReader = new FileFinder({
       directoyPath: path,
       recursive,
@@ -72,6 +72,6 @@ app.post('/delete', (request, response) => {
   response.status(200).json({ message: 'success' });
 });
 
-server.listen(config.backendPort, () => {
-  console.log('listening on', `${config.backendDomain}:${config.backendPort}`);
+server.listen(environment.backendPort, () => {
+  console.log('listening on', `${environment.backendUrl}`);
 });
