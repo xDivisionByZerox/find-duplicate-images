@@ -24,28 +24,13 @@ export class DuplicationFinder {
     const totalFileNumber = files.length;
 
     const startEvent = this.$eventEmitter.emitStart(new CompareStartEvent());
-    const sameFilesGroups = this.compareFromReadResult(files);
-    this.$eventEmitter.emitFinish(new CompareFinishEvent({
-      startTime: startEvent.startTime,
-      results: sameFilesGroups,
-      // todo: get this from inner find methode
-      completed: totalFileNumber,
-      total: totalFileNumber,
-    }));
 
-    return sameFilesGroups;
-  }
-
-  private compareFromReadResult(filePathes: string[]): string[][] {
     // [hash, filePathes]
     const hashMap = new Map<string, string[]>();
     let interations = 0;
 
-    for (const path of filePathes) {
-      const buffer = readFileSync(path);
-      const hash = createHash('sha256')
-        .update(buffer)
-        .digest('hex');
+    for (const path of files) {
+      const hash = this.getFileContentHash(path);
       const existing = hashMap.get(hash);
       if (existing !== undefined) {
         existing.push(path);
@@ -59,13 +44,30 @@ export class DuplicationFinder {
       interations = interations + 1;
       this.$eventEmitter.emitUpdate(new CompareUpdateEvent({
         completed: interations,
-        total: filePathes.length,
+        total: totalFileNumber,
       }));
     }
 
     const duplicates = [...hashMap.values()].filter((elem) => elem.length > 1);
 
+    this.$eventEmitter.emitFinish(new CompareFinishEvent({
+      startTime: startEvent.startTime,
+      results: duplicates,
+      // todo: get this from inner find methode
+      completed: totalFileNumber,
+      total: totalFileNumber,
+    }));
+
     return duplicates;
+  }
+
+  private getFileContentHash(filePath: string): string {
+    const buffer = readFileSync(filePath);
+    const hash = createHash('sha256')
+      .update(buffer)
+      .digest('hex');
+
+    return hash;
   }
 
 }
