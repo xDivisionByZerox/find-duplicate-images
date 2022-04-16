@@ -1,4 +1,4 @@
-export async function postRequest(url: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+export async function postRequest<T>(url: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(url, {
     body: JSON.stringify(body),
     method: 'POST',
