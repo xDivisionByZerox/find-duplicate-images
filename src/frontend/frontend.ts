@@ -1,6 +1,6 @@
 import { environment } from '../shared/environment';
 import { FindResult } from '../shared/find-result';
-import { createResultGroupComponent } from './components/result-group.component';
+import { createResultContainerComponent } from './components/result-container.component';
 import { createSpinnerComponent } from './components/spinner.component';
 import { postRequest } from './util/request';
 
@@ -33,38 +33,22 @@ function getPathValue(): string {
   return path;
 }
 
-getElementById('submit-configuration').onclick = submitConfiguration;
-
 async function submitConfiguration(): Promise<void> {
-  const spinner = createSpinnerComponent();
-  switchToResultView(spinner);
-
-  const result = await postRequest<FindResult>(environment.backendUrl, {
+  const body = {
     recursive: getRecursiveValue(),
     path: getPathValue(),
-  });
+  };
+  getElementById('configuration-container').remove();
 
+  const resultContainerElement = getElementById('result-container');
+
+  const spinner = createSpinnerComponent();
+  resultContainerElement.appendChild(spinner);
+
+  const result = await postRequest<FindResult>(environment.backendUrl, body);
   spinner.remove();
 
-  appendResultGroups(result);
+  resultContainerElement.appendChild(createResultContainerComponent(result.duplicates));
 }
 
-function switchToResultView(spinnerElement: HTMLElement) {
-  getElementById('configuration-container').style.display = 'none';
-
-  const resultContainerElement = getElementById('result-container');
-  resultContainerElement.appendChild(spinnerElement);
-}
-
-function appendResultGroups(result: FindResult): void {
-  const resultContainerElement = getElementById('result-container');
-
-  const compareResultContainerElement = document.createElement('div');
-  compareResultContainerElement.id = 'compare-result-container';
-  resultContainerElement.appendChild(compareResultContainerElement);
-
-  for (const [index, duplicates] of result.duplicates.entries()) {
-    const resultGroupComponent = createResultGroupComponent(index + 1, duplicates);
-    resultContainerElement.appendChild(resultGroupComponent);
-  }
-}
+getElementById('submit-configuration').onclick = submitConfiguration;
