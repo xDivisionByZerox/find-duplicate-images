@@ -1,13 +1,17 @@
 import cors from 'cors';
+import { v4 } from 'uuid';
 import express, { json, urlencoded } from 'express';
 import { statSync, unlinkSync } from 'fs';
 import { createServer } from 'http';
 import { isAbsolute } from 'path';
+import { FindResult } from 'src/shared/find-result';
 import { environment } from '../shared/environment';
 import { findDuplicates } from './find-duplicates-async';
 
 const app = express();
 const server = createServer(app);
+
+const resultMap = new Map<string, FindResult | null>();
 
 app
   .use(
@@ -15,26 +19,46 @@ app
     urlencoded({ extended: true }),
     cors({ origin: '*' }),
   )
-  .post('/', async (request, response) => {
-    const path = request.body.path ?? '';
-    const recursive = request.body.recursive ?? false;
+  .post('/', async (req, res) => {
+    const path = req.body.path ?? '';
+    const recursive = req.body.recursive ?? false;
     if (!(statSync(path).isDirectory() && isAbsolute(path))) {
-      response.send('Path must be a absolute directoy');
+      res.send('Path must be a absolute directoy');
     } else {
-      const result = await findDuplicates(path, recursive);
+      const resultId = v4();
+      resultMap.set(resultId, null);
+      res.json({
+        id: resultId,
+      });
 
-      response.json(result);
+      const result = await findDuplicates(path, recursive);
+      resultMap.set(resultId, result);
     }
   })
-  .post('/delete', (request, response) => {
-    const { path } = request.body;
+  .get('/status/:id', (req, res) => {
+    const id = req.params.id;
+    const result = resultMap.get(id);
+    if (result === undefined) {
+      res.status(403).json({
+        error: 'invalid result id',
+      });
+    } else if (result === null) {
+      res.status(102).json({
+        text: 'still processing',
+      });
+    } else {
+      res.status(200).json(result);
+    }
+  })
+  .post('/delete', (req, res) => {
+    const { path } = req.body;
     if (typeof path !== 'string' && !isAbsolute(path)) {
       throw new Error('Invalid path argument');
     }
 
     unlinkSync(path);
 
-    response.json({ message: 'success' });
+    res.json({ message: 'success' });
   });
 
 server.listen(environment.backendPort, () => {
