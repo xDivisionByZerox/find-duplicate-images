@@ -1,5 +1,6 @@
 import { environment } from '../shared/environment';
 import { FindResult } from '../shared/find-result';
+import { createNoResultComponent } from './components/no-result.component';
 import { createResultContainerComponent } from './components/result-container.component';
 import { createSpinnerComponent } from './components/spinner.component';
 import { postRequest } from './util/request';
@@ -48,7 +49,11 @@ async function submitConfiguration(): Promise<void> {
   const result = await postRequest<FindResult>(environment.backendUrl, body);
   spinner.remove();
 
-  resultContainerElement.appendChild(createResultContainerComponent(result.duplicates));
+  if (result.duplicates.length > 0) {
+    resultContainerElement.appendChild(createResultContainerComponent(result.duplicates));
+  } else {
+    resultContainerElement.appendChild(createNoResultComponent());
+  }
 }
 
 getElementById('submit-configuration').onclick = submitConfiguration;
