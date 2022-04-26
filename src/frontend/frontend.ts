@@ -53,7 +53,7 @@ async function submitConfiguration(): Promise<void> {
   function pollForResult() {
     setTimeout(async () => {
       const result = await getRequest<FindResult | { error: string } | { text: string }>(`${environment.backendUrl}/status/${id}`);
-      if (isProcessingRsponse(result)) {
+      if (isProcessingResponse(result)) {
         return pollForResult();
       }
 
@@ -61,22 +61,25 @@ async function submitConfiguration(): Promise<void> {
 
       if (isErrorResponse(result)) {
         throw new Error(result.error);
-      } else {
-        return handleResult(result);
       }
+
+      const component = getResultComponent(result);
+      resultContainerElement.appendChild(component);
+
+      return undefined;
     }, 5000);
   }
 
-  function handleResult(result: FindResult) {
+  function getResultComponent(result: FindResult) {
     if (result.duplicates.length > 0) {
-      resultContainerElement.appendChild(createResultContainerComponent(result.duplicates));
+      return createResultContainerComponent(result.duplicates);
     } else {
-      resultContainerElement.appendChild(createNoResultComponent());
+      return createNoResultComponent();
     }
   }
 }
 
-function isProcessingRsponse(value: unknown): value is { text: string } {
+function isProcessingResponse(value: unknown): value is { text: string } {
   return (
     typeof value === 'object'
     && value !== null
