@@ -25,3 +25,16 @@ export async function postRequest<T>(url: string, body: Record<string, unknown>)
 
   return responseBody;
 }
+
+export async function deleteRequest<T>(url: string): Promise<T> {
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+  });
+  const responseBody = await response.json();
+
+  return responseBody;
+}
