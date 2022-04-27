@@ -3,7 +3,7 @@ import { FindResult } from '../shared/find-result';
 import { createNoResultComponent } from './components/no-result.component';
 import { createResultContainerComponent } from './components/result-container.component';
 import { createSpinnerComponent } from './components/spinner.component';
-import { postRequest } from './util/request';
+import { getRequest, postRequest } from './util/request';
 
 function getElementById(id: string) {
   const elem = document.getElementById(id);
@@ -46,14 +46,53 @@ async function submitConfiguration(): Promise<void> {
   const spinner = createSpinnerComponent();
   resultContainerElement.appendChild(spinner);
 
-  const result = await postRequest<FindResult>(environment.backendUrl, body);
-  spinner.remove();
+  const { id } = await postRequest<{ id: string }>(environment.backendUrl, body);
 
-  if (result.duplicates.length > 0) {
-    resultContainerElement.appendChild(createResultContainerComponent(result.duplicates));
-  } else {
-    resultContainerElement.appendChild(createNoResultComponent());
+  pollForResult();
+
+  function pollForResult() {
+    setTimeout(async () => {
+      const result = await getRequest<FindResult | { error: string } | { text: string }>(`${environment.backendUrl}/status/${id}`);
+      if (isProcessingResponse(result)) {
+        return pollForResult();
+      }
+
+      spinner.remove();
+
+      if (isErrorResponse(result)) {
+        throw new Error(result.error);
+      }
+
+      const component = getResultComponent(result);
+      resultContainerElement.appendChild(component);
+
+      return undefined;
+    }, 5000);
   }
+
+  function getResultComponent(result: FindResult) {
+    if (result.duplicates.length > 0) {
+      return createResultContainerComponent(result.duplicates);
+    } else {
+      return createNoResultComponent();
+    }
+  }
+}
+
+function isProcessingResponse(value: unknown): value is { text: string } {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'text' in value
+  );
+}
+
+function isErrorResponse(value: unknown): value is { error: string } {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'error' in value
+  );
 }
 
 getElementById('submit-configuration').onclick = submitConfiguration;
