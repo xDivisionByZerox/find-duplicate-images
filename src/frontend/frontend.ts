@@ -46,7 +46,7 @@ async function submitConfiguration(): Promise<void> {
   const spinner = createSpinnerComponent();
   resultContainerElement.appendChild(spinner);
 
-  const { id } = await postRequest<{ id: string }>(environment.backendUrl, body);
+  const { id } = await postRequest<{ id: string }>(environment.backendUrl, { body });
 
   pollForResult();
 
