@@ -50,9 +50,9 @@ app
       res.status(200).json(result);
     }
   })
-  .post('/delete', (req, res) => {
-    const { path } = req.body;
-    if (typeof path !== 'string' && !isAbsolute(path)) {
+  .delete('/file', (req, res) => {
+    const { path } = req.query;
+    if (typeof path !== 'string' || !isAbsolute(path)) {
       throw new Error('Invalid path argument');
     }
 
