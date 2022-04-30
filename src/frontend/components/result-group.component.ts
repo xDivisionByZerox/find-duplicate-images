@@ -67,7 +67,7 @@ function createDeleteButtonColumn(path: string) {
     }
 
     const query = new URLSearchParams({ path });
-    await deleteRequest(`${environment.backendUrl}/delete`, {
+    await deleteRequest(`${environment.backendUrl}/file`, {
       queryParams: query,
     });
 
