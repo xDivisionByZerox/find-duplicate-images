@@ -52,7 +52,13 @@ async function submitConfiguration(): Promise<void> {
 
   function pollForResult() {
     setTimeout(async () => {
-      const result = await getRequest<FindResult | { error: string } | { text: string }>(`${environment.backendUrl}/status/${id}`);
+      const result = await getRequest<
+        FindResult
+        | { error: string }
+        | { text: string }
+      >(`${environment.backendUrl}/status/${id}`).catch(() => ({
+        text: 'Unknown error in request',
+      }));
       if (isProcessingResponse(result)) {
         return pollForResult();
       }
