@@ -1,8 +1,7 @@
 import { createHash } from 'crypto';
-import { readFileSync } from 'fs';
-import { readdir, stat } from 'fs/promises';
+import { readdir, readFile, stat } from 'fs/promises';
 import { join, normalize } from 'path';
-import { IFindMetadata, FindResult } from '../shared/find-result';
+import { FindResult, IFindMetadata } from '../shared/find-result';
 
 type FindRecursiveResult = IFindMetadata & {
   hashMap: Map<string, string[]>;
@@ -33,7 +32,7 @@ async function findDuplicatesRecursive(directoyPath: string, recursive: boolean)
     if (stats.isFile()) {
       filePathes.push(fullPath);
       totalBytes = totalBytes + stats.size;
-      const hash = getFileContentHash(fullPath);
+      const hash = await getFileContentHash(fullPath);
       mergeArrayValueMap(hashMap, hash, fullPath);
     } else if (stats.isDirectory()) {
       subDirectorys.push(fullPath);
@@ -75,8 +74,8 @@ function mergeArrayValueMap(map: Map<string, string[]>, key: string, value: stri
   }
 }
 
-function getFileContentHash(filePath: string): string {
-  const buffer = readFileSync(filePath);
+async function getFileContentHash(filePath: string): Promise<string> {
+  const buffer = await readFile(filePath);
   const hash = createHash('sha256')
     .update(buffer)
     .digest('hex');

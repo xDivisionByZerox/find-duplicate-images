@@ -15,14 +15,14 @@ const resultMap = new Map<string, FindResult | null>();
 
 app
   .use(
+    cors({ origin: '*' }),
     json(),
     urlencoded({ extended: true }),
-    cors({ origin: '*' }),
   )
   .post('/', async (req, res) => {
     const path = req.body.path ?? '';
     const recursive = req.body.recursive ?? false;
-    if (!(statSync(path).isDirectory() && isAbsolute(path))) {
+    if (!(isAbsolute(path) && statSync(path).isDirectory())) {
       res.send('Path must be a absolute directoy');
     } else {
       const resultId = v4();
@@ -50,9 +50,9 @@ app
       res.status(200).json(result);
     }
   })
-  .post('/delete', (req, res) => {
-    const { path } = req.body;
-    if (typeof path !== 'string' && !isAbsolute(path)) {
+  .delete('/file', (req, res) => {
+    const { path } = req.query;
+    if (typeof path !== 'string' || !isAbsolute(path)) {
       throw new Error('Invalid path argument');
     }
 

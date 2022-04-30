@@ -46,13 +46,19 @@ async function submitConfiguration(): Promise<void> {
   const spinner = createSpinnerComponent();
   resultContainerElement.appendChild(spinner);
 
-  const { id } = await postRequest<{ id: string }>(environment.backendUrl, body);
+  const { id } = await postRequest<{ id: string }>(environment.backendUrl, { body });
 
   pollForResult();
 
   function pollForResult() {
     setTimeout(async () => {
-      const result = await getRequest<FindResult | { error: string } | { text: string }>(`${environment.backendUrl}/status/${id}`);
+      const result = await getRequest<
+        FindResult
+        | { error: string }
+        | { text: string }
+      >(`${environment.backendUrl}/status/${id}`).catch(() => ({
+        text: 'Unknown error in request',
+      }));
       if (isProcessingResponse(result)) {
         return pollForResult();
       }
