@@ -27,12 +27,13 @@ function requestOptionsFactory(options: RequestFactoryOptions): RequestInit {
   return result;
 }
 
-async function requestFactory(url: string, options: RequestFactoryOptions) {
+async function requestFactory(url: string, options: RequestFactoryOptions): Promise<Response> {
   if (options.queryParams) {
     url = `${url}?${options.queryParams.toString()}`;
   }
+  const normalizedOptions = requestOptionsFactory(options);
 
-  return fetch(url, requestOptionsFactory(options));
+  return fetch(url, normalizedOptions);
 }
 
 export async function getRequest<T>(url: string, options?: RequestOptions): Promise<T> {
