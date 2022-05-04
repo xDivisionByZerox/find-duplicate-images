@@ -1,15 +1,13 @@
 import cors from 'cors';
-import { v4 } from 'uuid';
 import express, { json, urlencoded } from 'express';
 import { statSync, unlinkSync } from 'fs';
-import { createServer } from 'http';
 import { isAbsolute } from 'path';
 import { FindResult } from 'src/shared/find-result';
+import { v4 } from 'uuid';
 import { environment } from '../shared/environment';
 import { findDuplicates } from './find-duplicates-async';
 
 const app = express();
-const server = createServer(app);
 
 const resultMap = new Map<string, FindResult | null>();
 
@@ -38,17 +36,21 @@ app
   .get('/status/:id', (req, res) => {
     const id = req.params.id;
     const result = resultMap.get(id);
-    if (result === undefined) {
-      res.status(403).json({
-        error: 'invalid result id',
-      });
-    } else if (result === null) {
-      res.status(102).json({
-        text: 'still processing',
-      });
-    } else {
-      res.status(200).json(result);
-    }
+    const body = (() => {
+      if (result === undefined) {
+        return {
+          error: 'invalid result id',
+        };
+      } else if (result === null) {
+        return {
+          text: 'still processing',
+        };
+      } else {
+        return result;
+      }
+    })();
+
+    res.json(body);
   })
   .delete('/file', (req, res) => {
     const { path } = req.query;
@@ -59,8 +61,7 @@ app
     unlinkSync(path);
 
     res.json({ message: 'success' });
+  })
+  .listen(environment.backendPort, () => {
+    console.log('listening on', `${environment.backendUrl}`);
   });
-
-server.listen(environment.backendPort, () => {
-  console.log('listening on', `${environment.backendUrl}`);
-});

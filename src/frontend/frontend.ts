@@ -1,9 +1,13 @@
-import { environment } from '../shared/environment';
 import { FindResult } from '../shared/find-result';
 import { createNoResultComponent } from './components/no-result.component';
 import { createResultContainerComponent } from './components/result-container.component';
 import { createSpinnerComponent } from './components/spinner.component';
-import { getRequest, postRequest } from './util/request';
+import { requestService } from './util/request';
+
+const pathInput = document.getElementById('path-input');
+const recursiveInput = document.getElementById('recursive-input');
+const resultContainerElement = getElementById('result-container');
+const spinner = createSpinnerComponent();
 
 function getElementById(id: string) {
   const elem = document.getElementById(id);
@@ -15,7 +19,6 @@ function getElementById(id: string) {
 }
 
 function getRecursiveValue(): boolean {
-  const recursiveInput = document.getElementById('recursive-input');
   if (!(recursiveInput instanceof HTMLInputElement)) {
     throw new Error('Could not find recursiveInputElement');
   }
@@ -25,7 +28,6 @@ function getRecursiveValue(): boolean {
 }
 
 function getPathValue(): string {
-  const pathInput = document.getElementById('path-input');
   if (!(pathInput instanceof HTMLInputElement)) {
     throw new Error('Could not find pathInputElement');
   }
@@ -41,26 +43,24 @@ async function submitConfiguration(): Promise<void> {
   };
   getElementById('configuration-container').remove();
 
-  const resultContainerElement = getElementById('result-container');
-
-  const spinner = createSpinnerComponent();
   resultContainerElement.appendChild(spinner);
 
-  const { id } = await postRequest<{ id: string }>(environment.backendUrl, { body });
+  const response = await requestService.startFileDuplicationSearch(body);
+  const { id } = response.data;
 
-  pollForResult();
+  await pollForResult(id).catch((error) => {
+    console.log('Error during response polling:');
+    console.log(error);
+  });
+}
 
-  function pollForResult() {
+async function pollForResult(id: string) {
+  return new Promise<void>((resolve) => {
     setTimeout(async () => {
-      const result = await getRequest<
-        FindResult
-        | { error: string }
-        | { text: string }
-      >(`${environment.backendUrl}/status/${id}`).catch(() => ({
-        text: 'Unknown error in request',
-      }));
+      const response = await requestService.getProcesState(id);
+      const result = response.data;
       if (isProcessingResponse(result)) {
-        return pollForResult();
+        return pollForResult(id);
       }
 
       spinner.remove();
@@ -72,16 +72,16 @@ async function submitConfiguration(): Promise<void> {
       const component = getResultComponent(result);
       resultContainerElement.appendChild(component);
 
-      return undefined;
+      return resolve();
     }, 5000);
-  }
+  });
+}
 
-  function getResultComponent(result: FindResult) {
-    if (result.duplicates.length > 0) {
-      return createResultContainerComponent(result.duplicates);
-    } else {
-      return createNoResultComponent();
-    }
+function getResultComponent(result: FindResult) {
+  if (result.duplicates.length > 0) {
+    return createResultContainerComponent(result.duplicates);
+  } else {
+    return createNoResultComponent();
   }
 }
 

@@ -1,5 +1,4 @@
-import { environment } from '../../shared/environment';
-import { deleteRequest } from '../util/request';
+import { requestService } from '../util/request';
 
 export function createResultGroupComponent(resultNumber: number, group: string[]) {
   const elem = document.createElement('section');
@@ -66,10 +65,7 @@ function createDeleteButtonColumn(path: string) {
       return;
     }
 
-    const query = new URLSearchParams({ path });
-    await deleteRequest(`${environment.backendUrl}/file`, {
-      queryParams: query,
-    });
+    await requestService.deleteFile(path);
 
     const row = column.parentElement;
     if (!row) {

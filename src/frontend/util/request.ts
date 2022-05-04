@@ -1,68 +1,42 @@
-type HttpMethod = 'GET' | 'POST' | 'DELETE' | 'PUT' | 'PATCH';
+import axios from 'axios';
+import { environment } from '../../shared/environment';
+import { FindResult } from '../../shared/find-result';
 
-type RequestOptions = {
-  body?: Record<string, unknown>;
-  headers?: Record<string, string>;
-  queryParams?: URLSearchParams;
-}
+class RequestService {
 
-type RequestFactoryOptions = RequestOptions & {
-  method: HttpMethod;
-}
-
-function requestOptionsFactory(options: RequestFactoryOptions): RequestInit {
-  const result: RequestInit = {
-    method: options.method,
+  private readonly $http = axios.create({
+    baseURL: environment.backendUrl,
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      ...options.headers,
     },
-  };
+  });
 
-  if (options.body !== undefined) {
-    result.body = JSON.stringify(options.body);
+  async getProcesState(id: string) {
+    return this.$http.get<
+      FindResult
+      | { error: string }
+      | { text: string }
+    >(`/status/${id}`);
   }
 
-  return result;
-}
-
-async function requestFactory(url: string, options: RequestFactoryOptions): Promise<Response> {
-  if (options.queryParams) {
-    url = `${url}?${options.queryParams.toString()}`;
+  async startFileDuplicationSearch(body: {
+    recursive: boolean;
+    path: string;
+  }) {
+    return this.$http.post<{ id: string }>('', body);
   }
-  const normalizedOptions = requestOptionsFactory(options);
 
-  return fetch(url, normalizedOptions);
+  async deleteFile(filePath: string) {
+    const query = new URLSearchParams({
+      path: filePath,
+    });
+
+    return this.$http.delete('/file', {
+      params: query,
+    });
+  }
+
 }
 
-export async function getRequest<T>(url: string, options?: RequestOptions): Promise<T> {
-  const response = await requestFactory(url, {
-    ...options,
-    method: 'GET',
-  });
-  const responseBody = await response.json();
-
-  return responseBody;
-}
-
-
-export async function postRequest<T>(url: string, options?: RequestOptions): Promise<T> {
-  const response = await requestFactory(url, {
-    ...options,
-    method: 'POST',
-  });
-  const responseBody = await response.json();
-
-  return responseBody;
-}
-
-export async function deleteRequest<T>(url: string, options?: RequestOptions): Promise<T> {
-  const response = await requestFactory(url, {
-    ...options,
-    method: 'DELETE',
-  });
-  const responseBody = await response.json();
-
-  return responseBody;
-}
+export const requestService = new RequestService();
