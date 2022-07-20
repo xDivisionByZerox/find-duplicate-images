@@ -1,20 +1,12 @@
-import { execSync } from 'child_process';
-import path from 'path';
+import { enableProdMode } from '@angular/core';
+import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 
-function getStartBrowserCommand() {
-  const { platform } = process;
-  switch (platform) {
-    case 'darwin': return 'open';
-    case 'win32': return 'start';
-    default: return 'xdg-open';
-  }
+import { AppModule } from './app/app.module';
+import { environment } from './environments/environment';
+
+if (environment.production) {
+  enableProdMode();
 }
 
-const viewFile = path.join(__dirname, 'frontend', 'frontend.html');
-const cmd = getStartBrowserCommand();
-execSync(`${cmd} ${viewFile}`);
-
-const backendEntry = path.join(__dirname, 'backend', 'index.js');
-execSync(`node ${backendEntry}`, {
-  stdio: 'inherit',
-});
+platformBrowserDynamic().bootstrapModule(AppModule)
+  .catch(err => console.error(err));
