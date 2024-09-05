@@ -3,7 +3,6 @@ import express, { json, urlencoded } from 'express';
 import { statSync, unlinkSync } from 'fs';
 import { isAbsolute } from 'path';
 import { FindResult } from 'src/shared/find-result';
-import { v4 } from 'uuid';
 import { environment } from '../shared/environment';
 import { findDuplicates } from './find-duplicates-async';
 
@@ -23,7 +22,7 @@ app
     if (!(isAbsolute(path) && statSync(path).isDirectory())) {
       res.send('Path must be a absolute directoy');
     } else {
-      const resultId = v4();
+      const resultId = crypto.randomUUID();
       resultMap.set(resultId, null);
       res.json({
         id: resultId,
